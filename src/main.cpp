@@ -25,7 +25,7 @@
 
 const int csPin = 33;          // LoRa radio chip select
 const int resetPin = 12;       // LoRa radio reset
-const int irqPin = 4;         // Change for your board; must be a hardware interrupt pin
+const int irqPin = 4;          // Change for your board; must be a hardware interrupt pin
 
 uint32_t cpu_frequency = 0;
 uint32_t xtal_frequency = 0;
