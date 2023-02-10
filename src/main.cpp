@@ -23,10 +23,6 @@
 #include <Wire.h>
 #endif
 
-const int csPin = 33;          // LoRa radio chip select
-const int resetPin = 12;       // LoRa radio reset
-const int irqPin = 4;          // Change for your board; must be a hardware interrupt pin
-
 uint32_t cpu_frequency = 0;
 uint32_t xtal_frequency = 0;
 uint32_t apb_frequency = 0;
@@ -141,10 +137,13 @@ static bool eth_connected = false;
 #define ETH_MDC_PIN                         23  // Pin# of the I²C clock signal for the Ethernet PHY
 #define ETH_MDIO_PIN                        18  // Pin# of the I²C IO signal for the Ethernet PHY
 #define NRST                                 5
-#define SD_MISO                              2
-#define SD_MOSI                             15
-#define SD_SCLK                             14
-#define SD_CS                               13
+
+#define LORA_MISO                            2
+#define LORA_MOSI                           15
+#define LORA_SCLK                           14
+#define LORA_CS                             33
+#define LORA_RST                            12
+#define LORA_IRQ                             4  // Change for your board; must be a hardware interrupt pin
 
 #define image_width                         32
 #define image_height                        32
@@ -742,16 +741,18 @@ void testClient(const char *host, uint16_t port)
 
 //////////////////////////////////////////////////////////////////////
 
-void setup()
-{
-    Serial.begin(115200);
-    while (!Serial);
+void setup() {
 
     //setCpuFrequencyMhz(80);               // Set CPU Frequenz 240, 160, 80, 40, 20, 10 Mhz
   
     cpu_frequency = getCpuFrequencyMhz();
     xtal_frequency = getXtalFrequencyMhz();
     apb_frequency = getApbFrequency();
+
+    Serial.begin(115200);
+    while (!Serial);
+
+    SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI, LORA_CS);
 
     Serial.println("");
     Serial.println(name);
@@ -786,7 +787,7 @@ void setup()
     delay(300);
 
     // override the default CS, reset, and IRQ pins (optional)
-    LoRa.setPins(csPin, resetPin, irqPin); // set CS, reset, IRQ pin
+    LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ); // set CS, reset, IRQ pin
     LoRa.setTxPower(17);  //2-20 default 17
     LoRa.setSpreadingFactor(7);    //6-12 default 7
     LoRa.setSignalBandwidth(125E3);   //7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, 250E3, and 500E3 default 125E3
@@ -814,7 +815,7 @@ void setup()
     pinMode(gpioP2, INPUT_PULLDOWN);
     pinMode(gpioP3, INPUT_PULLDOWN);
     pinMode(gpioP4, INPUT_PULLDOWN);
-    pinMode(SD_MISO, INPUT_PULLUP);
+    //pinMode(SD_MISO, INPUT_PULLUP);
 
     Serial.println("Outputs init succeeded.");
     outputInit = "Outputs init";
@@ -829,6 +830,7 @@ void setup()
     emptyDisplay();
     printDisplay();
 
+    /*
     SPI.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
     if (!SD.begin(SD_CS)) {
         Serial.println("SDCard MOUNT FAIL");
@@ -837,6 +839,7 @@ void setup()
         String str = "SDCard Size: " + String(cardSize) + "MB";
         Serial.println(str);
     }
+    */
 
     WiFi.onEvent(WiFiEvent);
 
