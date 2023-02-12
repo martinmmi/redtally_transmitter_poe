@@ -5,7 +5,7 @@
 //////////////////////////////////////////////////////////////////////
 
 #include <Arduino.h>
-//#include <U8g2lib.h>
+#include <U8g2lib.h>
 #include <LoRa.h>
 #include <Preferences.h>                //lib for flashstoreage
 #include "bitmaps.h"
@@ -57,8 +57,6 @@ char buf_localAddress[5];
 char buf_mode[4];
 char buf_rxAdr[5];
 char buf_txAdr[5];
-char buf_bV[5];
-char buf_bL[4];
 char buf_oledInit[12];
 char buf_loraInit[12];
 char buf_outputInit[12];
@@ -94,7 +92,6 @@ unsigned long lastControlTime = 0;
 unsigned long lastAckTime = 0;      
 unsigned long lastAckTimeEnd = 0;      
 unsigned long lastAnalogReadTime = 0;
-unsigned long lastGetBattery = 0;
 unsigned long lastTestTime = 0;
 unsigned long lastDisplayPrint = 0;
 
@@ -107,10 +104,8 @@ int gpioV1, gpioV2, gpioV3, gpioV4;
 int gpioV1Map, gpioV2Map, gpioV3Map, gpioV4Map;
 int missed_bb, missed_cc, missed_dd, missed_ee;
 int buf_rssi_bb_int, buf_rssi_cc_int, buf_rssi_dd_int, buf_rssi_ee_int;
-int bL = 0;
 
 float gpioV1Cal, gpioV2Cal, gpioV3Cal, gpioV4Cal;
-double bV = 0;
 
 bool gpioC1 = HIGH;
 bool gpioC2 = HIGH;
@@ -138,14 +133,20 @@ static bool eth_connected = false;
 #define ETH_MDIO_PIN                        18  // Pin# of the I²C IO signal for the Ethernet PHY
 #define NRST                                 5
 
-#define LORA_MISO                            2
+#define LORA_MISO                            2  //Pinout Section
 #define LORA_MOSI                           15
 #define LORA_SCLK                           14
 #define LORA_CS                             33
 #define LORA_RST                            12
-#define LORA_IRQ                             4  // Change for your board; must be a hardware interrupt pin
+#define LORA_IRQ                             4  //Must be a Hardware Interrupt Pin
 
-#define image_width                         32
+#define DISPLAY_MISO                         2
+#define DISPLAY_MOSI                        15
+#define DISPLAY_SCLK                        14
+#define DISPLAY_CS                          16
+#define DISPLAY_RST                         32
+
+#define image_width                         32  //Bitmap Declaration
 #define image_height                        32
 #define loadWidth                           50
 #define loadHeight                          50
@@ -160,7 +161,8 @@ static bool eth_connected = false;
 #define lineWidth                            2
 #define lineHeight                          10
 
-//U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 22, /* data=*/ 21);   // ESP32 Thing, HW I2C with pin remapping
+//U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/ DISPLAY_CS, /* dc=*/ DISPLAY_SCLK, /* reset=*/ DISPLAY_RST);
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 22, /* data=*/ 21);   // ESP32 Thing, HW I2C with pin remapping
 
 WebServer server(80);
 
@@ -168,7 +170,7 @@ WebServer server(80);
 
 void printLogo(int color, int wait) {
 
-  /*
+  
   u8g2.setDrawColor(color);
   
   // logo 1
@@ -221,12 +223,11 @@ void printLogo(int color, int wait) {
   do { u8g2.drawXBM(0, 0, logoWidth, logoHeight, logo10); }
   while (u8g2.nextPage());
   delay(wait);
-  */
+  
 }
 
 void printLoad(int color, int wait, int count) {
 
-  /*
   u8g2.setDrawColor(color);
 
   for (int i=0; i < count; i++) {
@@ -271,16 +272,16 @@ void printLoad(int color, int wait, int count) {
     while (u8g2.nextPage());
     delay(wait);
     }
-    */
+
 }
 
 void printLora(int color) {
-  /*
+  
   u8g2.setDrawColor(color);
   u8g2.firstPage();
   do { u8g2.drawXBM(0, 0, loraWidth, loraHeight, lora); }
   while (u8g2.nextPage());
-  */
+  
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -301,7 +302,7 @@ void sendMessage(String message) {
 
 //////////////////////////////////////////////////////////////////////
 
-void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *ptr_incoming, String *ptr_rssi, String *ptr_snr) {
+void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *ptr_incoming, String *ptr_rssi, String *ptr_snr) {  
   if (packetSize == 0) return;          // if there's no packet, return
 
   //Clear the variables
@@ -384,8 +385,6 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
   /*
   Serial.println("");
   Serial.print("Mode: "); Serial.println(mode);
-  Serial.print("Voltage: "); Serial.print(bV); Serial.println(" V");
-  Serial.print("Voltage Level: "); Serial.print(bL); Serial.println(" %");
   Serial.print("TxD Adr: "); Serial.println(string_destinationAddress);
   Serial.print("TxD: "); Serial.println(outgoing);
   Serial.print("RxD Adr: "); Serial.println(tx_adr);
@@ -404,6 +403,10 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
   Serial.print("CPU Frequency: "); Serial.print(cpu_frequency); Serial.println(" MHz");
   Serial.print("XTAL Frequency: "); Serial.print(xtal_frequency); Serial.println(" MHz");
   Serial.print("APB Frequency: "); Serial.print(apb_frequency); Serial.println(" Hz");
+  */
+
+  digitalWrite(LORA_CS, HIGH);       // enable/disable cs pins for multiple spi devices
+  digitalWrite(DISPLAY_CS, LOW);
   
   sprintf(buf_tx, "%s", outgoing);
   sprintf(buf_rx, "%s", incoming);
@@ -428,24 +431,7 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
   buf_rssi_dd_int = atoi(buf_rssi_dd);
   buf_rssi_ee_int = atoi(buf_rssi_ee);
 
-  if ((millis() - lastGetBattery > 10000) || (initBattery == HIGH)) {
-    bV = BL.getBatteryVolts();
-    bL = BL.getBatteryChargeLevel();
-    snprintf(buf_bV, 5, "%f", bV);
-    snprintf(buf_bL, 4, "%d", bL);
-    initBattery = LOW;
-    lastGetBattery = millis();
-  }
-
   u8g2.clearBuffer();					      // clear the internal memory
-
-  //Battery Level Indicator
-  u8g2.setFont(u8g2_font_6x13_tf);
-  u8g2.setDrawColor(1);
-  u8g2.drawStr(67,12,buf_bL);
-  u8g2.drawStr(87,12,"%");
-  //u8g2.drawStr(67,25,buf_bV);       // write something to the internal memory
-  //u8g2.drawStr(87,25,"V");
 
   //TxD and RxD Indicator
   u8g2.setFont(u8g2_font_6x10_tf);
@@ -474,37 +460,8 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
   u8g2.setFont(u8g2_font_6x13_tf);
   u8g2.setDrawColor(0);
 
-  //Battery Indicator
-  if ((bL >= 0) && (bL <= 10)) {
-    batteryAttention = HIGH;
-  }
-  if ((bL >= 11) && (bL <= 25)) {
-    u8g2.drawXBM(99, 0, batteryWidth, batteryHeight, battery1);
-    batteryAttention = LOW;
-  }
-  if ((bL >= 26) && (bL <= 50)) {
-    u8g2.drawXBM(99, 0, batteryWidth, batteryHeight, battery2);
-    batteryAttention = LOW;
-    }
-  if ((bL >= 51) && (bL <= 75)) {
-    u8g2.drawXBM(99, 0, batteryWidth, batteryHeight, battery3);
-    batteryAttention = LOW;
-  }
-  if ((bL >= 76) && (bL <= 100)) {
-    u8g2.drawXBM(99, 0, batteryWidth, batteryHeight, battery4);
-    batteryAttention = LOW;
-  }
-
-  //Battery Attention Indicator
-  if ((batteryAttention == HIGH)) {
-    batteryAttentionState = !batteryAttentionState;
-    if ((batteryAttentionState == HIGH)) {
-      u8g2.drawXBM(99, 0, batteryWidth, batteryHeight, battery0);
-    }
-    if ((batteryAttentionState == LOW)) {
-      u8g2.drawXBM(99, 0, batteryWidth, batteryHeight, battery1);
-    } 
-  }
+  //Power Mode Indicator
+  u8g2.drawXBM(99, 0, batteryWidth, batteryHeight, battery0);
 
   //Signal Strength Indicator bb
   if (((tally_bb == HIGH) || (tally_bb_init == HIGH)) && (buf_rssi_bb_int <= -80) && (tx_adr_bb == "bb") && ((incoming_bb == "off") || (incoming_bb == "con"))) {
@@ -649,7 +606,9 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
   u8g2.sendBuffer();
 
   lastDisplayPrint = millis();
-  */
+  digitalWrite(LORA_CS, LOW);       // enable/disable cs pins for multiple spi devices
+  digitalWrite(DISPLAY_CS, HIGH);
+  
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -753,15 +712,19 @@ void setup() {
     while (!Serial);
 
     SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI, LORA_CS);
+    //SPI.begin(DISPLAY_SCLK, DISPLAY_MISO, DISPLAY_MOSI, DISPLAY_CS);
 
     Serial.println("");
     Serial.println(name);
 
-    //u8g2.begin();
-    //u8g2.clearBuffer();
-    //u8g2.setFont(u8g2_font_6x10_tf);
-    //u8g2.setContrast(defaultBrightnessDisplay);                  
-    //u8g2.setFlipMode(1);
+    digitalWrite(LORA_CS, HIGH);       // enable/disable cs pins for multiple spi devices
+    digitalWrite(DISPLAY_CS, LOW);
+
+    u8g2.begin();
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_6x10_tf);
+    u8g2.setContrast(defaultBrightnessDisplay);                  
+    u8g2.setFlipMode(1);
 
     //        Color, Delay, Runs
     printLogo(0, 50);
@@ -776,14 +739,14 @@ void setup() {
 
     Serial.println("Version: " + version);
     sprintf(buf_version, "%s", version);
-    //u8g2.drawStr(99,60,buf_version);
-    //u8g2.sendBuffer();
+    u8g2.drawStr(99,60,buf_version);
+    u8g2.sendBuffer();
 
     Serial.println("OLED init succeeded.");
     oledInit = "OLED init";
     sprintf(buf_oledInit, "%s", oledInit);
-    //u8g2.drawStr(0,15,buf_oledInit);
-    //u8g2.sendBuffer();
+    u8g2.drawStr(0,15,buf_oledInit);
+    u8g2.sendBuffer();
     delay(300);
 
     // override the default CS, reset, and IRQ pins (optional)
@@ -795,33 +758,42 @@ void setup() {
     LoRa.setPreambleLength(8);    //6-65535 default 8
     LoRa.begin(868E6);  //set Frequenz 915E6 or 868E6
 
+    digitalWrite(LORA_CS, LOW);       // enable/disable cs pins for multiple spi devices
+    digitalWrite(DISPLAY_CS, HIGH);
+
     if (!LoRa.begin(868E6)) {             // initialize ratio at 868 MHz
         Serial.println("LoRa init failed. Check your connections.");
         loraInit = "LoRa failed";
+        digitalWrite(LORA_CS, HIGH);       // enable/disable cs pins for multiple spi devices
+        digitalWrite(DISPLAY_CS, LOW);
         sprintf(buf_loraInit, "%s", loraInit);   
-        //u8g2.drawStr(0,35,buf_loraInit);
-        //u8g2.sendBuffer();
+        u8g2.drawStr(0,35,buf_loraInit);
+        u8g2.sendBuffer();
+        digitalWrite(LORA_CS, HIGH);       // enable/disable cs pins for multiple spi devices
+        digitalWrite(DISPLAY_CS, HIGH);
         while (true);                       // if failed, do nothing
     }
+
+    digitalWrite(LORA_CS, HIGH);       // enable/disable cs pins for multiple spi devices
+    digitalWrite(DISPLAY_CS, LOW);
 
     Serial.println("LoRa init succeeded.");
     loraInit = "LoRa init";
     sprintf(buf_loraInit, "%s", loraInit);   
-    //u8g2.drawStr(0,35,buf_loraInit);
-    //u8g2.sendBuffer();
+    u8g2.drawStr(0,35,buf_loraInit);
+    u8g2.sendBuffer();
     delay(300);
 
     pinMode(gpioP1, INPUT_PULLDOWN);
     pinMode(gpioP2, INPUT_PULLDOWN);
     pinMode(gpioP3, INPUT_PULLDOWN);
     pinMode(gpioP4, INPUT_PULLDOWN);
-    //pinMode(SD_MISO, INPUT_PULLUP);
 
     Serial.println("Outputs init succeeded.");
     outputInit = "Outputs init";
     sprintf(buf_outputInit, "%s", outputInit);   
-    //u8g2.drawStr(0,45,buf_outputInit);
-    //u8g2.sendBuffer();
+    u8g2.drawStr(0,45,buf_outputInit);
+    u8g2.sendBuffer();
     delay(500);
 
     printLora(1);
@@ -830,16 +802,10 @@ void setup() {
     emptyDisplay();
     printDisplay();
 
-    /*
-    SPI.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
-    if (!SD.begin(SD_CS)) {
-        Serial.println("SDCard MOUNT FAIL");
-    } else {
-        uint32_t cardSize = SD.cardSize() / (1024 * 1024);
-        String str = "SDCard Size: " + String(cardSize) + "MB";
-        Serial.println(str);
-    }
-    */
+    digitalWrite(LORA_CS, LOW);       // enable/disable cs pins for multiple spi devices
+    digitalWrite(DISPLAY_CS, HIGH);
+
+  
 
     WiFi.onEvent(WiFiEvent);
 
@@ -869,10 +835,11 @@ void setup() {
                 // IPAddress dns2 = (uint32_t)0x00000000
               );
     */
-
+    /*
     while (!eth_connected) {
         Serial.println("Wait for network connect ..."); delay(500);
     }
+    */
 
     if (MDNS.begin("esp32")) {
         Serial.println("MDNS responder started");
@@ -888,6 +855,7 @@ void setup() {
 
     server.begin();
     Serial.println("HTTP server started");
+
 }
 
 //////////////////////////////////////////////////////////////////////
