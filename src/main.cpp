@@ -15,8 +15,7 @@
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <ArduinoOTA.h>
-#include "FS.h"
-#include <LITTLEFS.h>                   //lib for filesystem
+#include "SPIFFS.h"                     //lib for filesystem
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -862,6 +861,14 @@ void setup() {
 
 
 
+    if(!SPIFFS.begin(true)){
+        Serial.println("An Error has occurred while mounting SPIFFS");
+        return;
+    }
+    Serial.println("SPIFFS init succeeded.");
+
+
+
     WiFi.onEvent(WiFiEvent);
 
     pinMode(NRST, OUTPUT);
@@ -894,12 +901,14 @@ void setup() {
 
     ArduinoOTA.begin();
  
+
     server.on ("/", []() {
         if (!server.authenticate(username, password)) {
             return server.requestAuthentication();
         }
         handleRoot();
     });
+
 
     server.on("/inline", []() {
         if (!server.authenticate(username, password)) {
