@@ -14,6 +14,9 @@
 #include <SD.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
+#include <ArduinoOTA.h>
+#include "FS.h"
+#include <LITTLEFS.h>                   //lib for filesystem
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -69,6 +72,9 @@ char buf_bL_bb[4];
 char buf_bL_cc[4];
 char buf_bL_dd[4];
 char buf_bL_ee[4];
+
+const char* username = "admin";
+const char* password = "admin";
 
 ///////////////////////////////////////////////
 ///////// CHANGE for each Transmitter /////////
@@ -886,13 +892,25 @@ void setup() {
         Serial.println("MDNS responder started.");
     }
 
-    server.on("/", handleRoot);
+    ArduinoOTA.begin();
+ 
+    server.on ("/", []() {
+        if (!server.authenticate(username, password)) {
+            return server.requestAuthentication();
+        }
+        handleRoot();
+    });
 
     server.on("/inline", []() {
-        server.send(200, "text/plain", "This works as well.");
+        if (!server.authenticate(username, password)) {
+            return server.requestAuthentication();
+        }
+        server.send(200, "text/plain", "this works as well");
     });
 
     server.onNotFound(handleNotFound);
+
+
 
     server.begin();
     Serial.println("HTTP server started.");
@@ -998,6 +1016,7 @@ void loop() {
         }
 
         if (millis() - lastHandleClient > 2000) {
+            ArduinoOTA.handle();
             server.handleClient();
             lastHandleClient = millis();
         }
@@ -1172,6 +1191,7 @@ void loop() {
     }
 
     if (millis() - lastHandleClient > 2000) {
+        ArduinoOTA.handle();
         server.handleClient();
         lastHandleClient = millis();
     }
@@ -1228,6 +1248,7 @@ void loop() {
         }
 
         if (millis() - lastHandleClient > 2000) {
+            ArduinoOTA.handle();
             server.handleClient();
             lastHandleClient = millis();
         }
@@ -1284,6 +1305,7 @@ void loop() {
             }
 
             if (millis() - lastHandleClient > 2000) {
+                ArduinoOTA.handle();
                 server.handleClient();
                 lastHandleClient = millis();
             }
@@ -1340,6 +1362,7 @@ void loop() {
             }
 
             if (millis() - lastHandleClient > 2000) {
+                ArduinoOTA.handle();
                 server.handleClient();
                 lastHandleClient = millis();
             }
@@ -1396,6 +1419,7 @@ void loop() {
             }
 
             if (millis() - lastHandleClient > 2000) {
+                ArduinoOTA.handle();
                 server.handleClient();
                 lastHandleClient = millis();
             }
@@ -1409,6 +1433,7 @@ void loop() {
         }
 
         if (millis() - lastHandleClient > 2000) {
+            ArduinoOTA.handle();
             server.handleClient();
             lastHandleClient = millis();
         }
