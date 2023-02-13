@@ -94,6 +94,7 @@ unsigned long lastAckTimeEnd = 0;
 unsigned long lastAnalogReadTime = 0;
 unsigned long lastTestTime = 0;
 unsigned long lastDisplayPrint = 0;
+unsigned long lastHandleClient = 0;
 
 int defaultBrightnessDisplay = 150;   // value from 1 to 255
 int counterSend = 0;
@@ -145,6 +146,11 @@ static bool eth_connected = false;
 #define DISPLAY_SCLK                        14
 #define DISPLAY_CS                          16
 #define DISPLAY_RST                         32
+
+#define SD_MISO                              2
+#define SD_MOSI                             15
+#define SD_SCLK                             14
+#define SD_CS                               13
 
 #define image_width                         32  //Bitmap Declaration
 #define image_height                        32
@@ -287,6 +293,7 @@ void printLora(int color) {
 //////////////////////////////////////////////////////////////////////
 
 void sendMessage(String message) {
+  digitalWrite(LORA_CS, LOW);           //Select LORA SPI Device
   LoRa.beginPacket();                   // start packet
   LoRa.write(destination);              // add destination address
   LoRa.write(localAddress);             // add sender address
@@ -298,11 +305,13 @@ void sendMessage(String message) {
   LoRa.print(message);                  // add payload
   LoRa.endPacket();                     // finish packet and send it
   msgCount++;                           // increment message ID
+  digitalWrite(LORA_CS, HIGH);           //Select LORA SPI Device
 }
 
 //////////////////////////////////////////////////////////////////////
 
 void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *ptr_incoming, String *ptr_rssi, String *ptr_snr) {  
+  digitalWrite(LORA_CS, LOW);           //Select LORA SPI Device
   if (packetSize == 0) return;          // if there's no packet, return
 
   //Clear the variables
@@ -357,6 +366,7 @@ void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *p
   *ptr_rssi = String(byte_rssi - 256);
   *ptr_snr = String(LoRa.packetSnr());
 
+  digitalWrite(LORA_CS, HIGH);
   return;
 
 }
@@ -405,8 +415,7 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
   Serial.print("APB Frequency: "); Serial.print(apb_frequency); Serial.println(" Hz");
   */
 
-  digitalWrite(LORA_CS, HIGH);       // enable/disable cs pins for multiple spi devices
-  digitalWrite(DISPLAY_CS, LOW);
+  digitalWrite(DISPLAY_CS, LOW);      //Select Display SPI Device
   
   sprintf(buf_tx, "%s", outgoing);
   sprintf(buf_rx, "%s", incoming);
@@ -606,263 +615,275 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
   u8g2.sendBuffer();
 
   lastDisplayPrint = millis();
-  digitalWrite(LORA_CS, LOW);       // enable/disable cs pins for multiple spi devices
   digitalWrite(DISPLAY_CS, HIGH);
   
 }
 
 //////////////////////////////////////////////////////////////////////
 
+// Main page
 void handleRoot()
 {
-    server.send(200, "text/plain", "hello from esp32!");
+  String message = "REDTALLY WEBSERVICE\n\n\n";
+  message += "tally_bb: ";
+  message += tally_bb;
+  message += "   ";
+  message += rssi_bb;
+  message += " dBm";
+  message += "\n";
+  message += "tally_cc: ";
+  message += tally_cc;
+  message += "   ";
+  message += rssi_cc;
+  message += " dBm";
+  message += "\n";
+  message += "tally_dd: ";
+  message += tally_dd;
+  message += "   ";
+  message += rssi_dd;
+  message += " dBm";
+  message += "\n";
+  message += "tally_ee: ";
+  message += tally_ee;
+  message += "   ";
+  message += rssi_ee;
+  message += " dBm";
+  message += "\n";
+  server.send(200, "text/plain", message);
 }
 
 //////////////////////////////////////////////////////////////////////
 
+// Not found page
 void handleNotFound()
 {
-    String message = "File Not Found\n\n";
-    message += "URI: ";
-    message += server.uri();
-    message += "\nMethod: ";
-    message += (server.method() == HTTP_GET) ? "GET" : "POST";
-    message += "\nArguments: ";
-    message += server.args();
-    message += "\n";
-    for (uint8_t i = 0; i < server.args(); i++) {
-        message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
-    }
-    server.send(404, "text/plain", message);
+  String message = "Error 404 - File not founded.\n\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+
+  for (uint8_t i = 0; i < server.args(); i++) {
+      message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+
+  server.send(404, "text/plain", message);
 }
 
 //////////////////////////////////////////////////////////////////////
 
+// Function for handeling the eth communication
 void WiFiEvent(WiFiEvent_t event)
 {
-    switch (event) {
-    case ARDUINO_EVENT_ETH_START:
-        Serial.println("ETH Started");
-        //set eth hostname here
-        ETH.setHostname("esp32-ethernet");
-        break;
-    case ARDUINO_EVENT_ETH_CONNECTED:
-        Serial.println("ETH Connected");
-        break;
-    case ARDUINO_EVENT_ETH_GOT_IP:
-        Serial.print("ETH MAC: ");
-        Serial.print(ETH.macAddress());
-        Serial.print(", IPv4: ");
-        Serial.print(ETH.localIP());
-        if (ETH.fullDuplex()) {
-            Serial.print(", FULL_DUPLEX");
-        }
-        Serial.print(", ");
-        Serial.print(ETH.linkSpeed());
-        Serial.println("Mbps");
-        eth_connected = true;
-        break;
-    case ARDUINO_EVENT_ETH_DISCONNECTED:
-        Serial.println("ETH Disconnected");
-        eth_connected = false;
-        break;
-    case ARDUINO_EVENT_ETH_STOP:
-        Serial.println("ETH Stopped");
-        eth_connected = false;
-        break;
-    default:
-        break;
-    }
-}
-
-//////////////////////////////////////////////////////////////////////
-
-void testClient(const char *host, uint16_t port)
-{
-    Serial.print("\nconnecting to ");
-    Serial.println(host);
-
-    WiFiClient client;
-    if (!client.connect(host, port)) {
-        Serial.println("connection failed");
-        return;
-    }
-    client.printf("GET / HTTP/1.1\r\nHost: %s\r\n\r\n", host);
-    while (client.connected() && !client.available())
-        ;
-    while (client.available()) {
-        Serial.write(client.read());
-    }
-
-    Serial.println("closing connection\n");
-    client.stop();
+  switch (event) {
+  case ARDUINO_EVENT_ETH_START:
+      Serial.println("ETH Started.");
+      ETH.setHostname("REDTALLY");     //set eth hostname here
+      break;
+  case ARDUINO_EVENT_ETH_CONNECTED:
+      Serial.println("ETH Connected.");
+      break;
+  case ARDUINO_EVENT_ETH_GOT_IP:
+      Serial.print("ETH MAC: ");
+      Serial.print(ETH.macAddress());
+      Serial.print(", IPv4: ");
+      Serial.print(ETH.localIP());
+      if (ETH.fullDuplex()) {
+          Serial.print(", FULL_DUPLEX");
+      }
+      Serial.print(", ");
+      Serial.print(ETH.linkSpeed());
+      Serial.println("Mbps.");
+      eth_connected = true;
+      break;
+  case ARDUINO_EVENT_ETH_DISCONNECTED:
+      Serial.println("ETH Disconnected.");
+      eth_connected = false;
+      break;
+  case ARDUINO_EVENT_ETH_STOP:
+      Serial.println("ETH Stopped.");
+      eth_connected = false;
+      break;
+  default:
+      break;
+  }
 }
 
 //////////////////////////////////////////////////////////////////////
 
 void setup() {
 
-    //setCpuFrequencyMhz(80);               // Set CPU Frequenz 240, 160, 80, 40, 20, 10 Mhz
+  //setCpuFrequencyMhz(80);               // Set CPU Frequenz 240, 160, 80, 40, 20, 10 Mhz
+
+  cpu_frequency = getCpuFrequencyMhz();
+  xtal_frequency = getXtalFrequencyMhz();
+  apb_frequency = getApbFrequency();
+
+  Serial.begin(115200);
+  while (!Serial);
+
+  pinMode(DISPLAY_CS, OUTPUT);                                //CS Display
+  pinMode(SD_CS, OUTPUT);                                     //CS SD-Reader
+  pinMode(LORA_MISO, INPUT_PULLUP);
+
+  SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI, LORA_CS);        //Begin and CS LORA
+
+
+  Serial.println("");
+  Serial.println(name);
+
+  digitalWrite(SD_CS, LOW);              //Select SDCard SPI Device
+
+  while (true) {
+        if (SD.begin(SD_CS)) {
+            Serial.println("SDCard init succeeded.");
+            delay(300);
+            break;
+        }
+        Serial.println("SDCard init failed. Check your connections.");
+        delay(300);
+        break;
+    }
+
+  digitalWrite(SD_CS, HIGH);              
+  digitalWrite(DISPLAY_CS, LOW);          //Select Display SPI Device
+
+  u8g2.begin();
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setContrast(defaultBrightnessDisplay);                  
+  u8g2.setFlipMode(1);
+
+  //        Color, Delay, Runs
+  printLogo(0, 50);
+  delay(1000);
+
+  printLoad(1, 60, 2);
+
+  printLogo(0, 25);
+  delay(500);
+
+  printLoad(1, 60, 4);
+
+  Serial.println("Version: " + version);
+  sprintf(buf_version, "%s", version);
+  u8g2.drawStr(99,60,buf_version);
+  u8g2.sendBuffer();
+
+  Serial.println("OLED init succeeded.");
+  oledInit = "OLED init";
+  sprintf(buf_oledInit, "%s", oledInit);
+  u8g2.drawStr(0,15,buf_oledInit);
+  u8g2.sendBuffer();
+  delay(300);
+
+  digitalWrite(DISPLAY_CS, HIGH);    
+  digitalWrite(LORA_CS, LOW);          //Select LORA SPI Device      
+
+  // override the default CS, reset, and IRQ pins (optional)
+  LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ); // set CS, reset, IRQ pin
+  LoRa.setTxPower(17);  //2-20 default 17
+  LoRa.setSpreadingFactor(7);    //6-12 default 7
+  LoRa.setSignalBandwidth(125E3);   //7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, 250E3, and 500E3 default 125E3
+  LoRa.setCodingRate4(5);   //5-8 default 5
+  LoRa.setPreambleLength(8);    //6-65535 default 8
+  LoRa.begin(868E6);  //set Frequenz 915E6 or 868E6
+
+  if (!LoRa.begin(868E6)) {             // initialize ratio at 868 MHz
+      Serial.println("LoRa init failed. Check your connections.");
+      loraInit = "LoRa failed";
+      digitalWrite(LORA_CS, HIGH);       
+      digitalWrite(DISPLAY_CS, LOW);        //Select Display SPI Device   
+      sprintf(buf_loraInit, "%s", loraInit);   
+      u8g2.drawStr(0,35,buf_loraInit);
+      u8g2.sendBuffer();
+      digitalWrite(DISPLAY_CS, HIGH);     
+      while (true);                       // if failed, do nothing
+  }
+
+  digitalWrite(LORA_CS, HIGH);       
+  digitalWrite(DISPLAY_CS, LOW);      //Select Display SPI Device   
+
+  Serial.println("LoRa init succeeded.");
+  loraInit = "LoRa init";
+  sprintf(buf_loraInit, "%s", loraInit);   
+  u8g2.drawStr(0,35,buf_loraInit);
+  u8g2.sendBuffer();
+  delay(300);
+
+  pinMode(gpioP1, INPUT_PULLDOWN);
+  pinMode(gpioP2, INPUT_PULLDOWN);
+  pinMode(gpioP3, INPUT_PULLDOWN);
+  pinMode(gpioP4, INPUT_PULLDOWN);
+
+  Serial.println("Outputs init succeeded.");
+  outputInit = "Outputs init";
+  sprintf(buf_outputInit, "%s", outputInit);   
+  u8g2.drawStr(0,45,buf_outputInit);
+  u8g2.sendBuffer();
+  delay(500);
+
+  printLora(1);
+  delay(2500);
+
+  emptyDisplay();
+  printDisplay();
+
+  digitalWrite(DISPLAY_CS, HIGH);
+
+
+
+  WiFi.onEvent(WiFiEvent);
+
+  pinMode(NRST, OUTPUT);
+
+  digitalWrite(NRST, 0);
+  delay(200);
+  digitalWrite(NRST, 1);
+  delay(200);
+  digitalWrite(NRST, 0);
+  delay(200);
+  digitalWrite(NRST, 1);
+
+  ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN,
+            ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE);
+
   
-    cpu_frequency = getCpuFrequencyMhz();
-    xtal_frequency = getXtalFrequencyMhz();
-    apb_frequency = getApbFrequency();
+  // Use static ip address config
+  IPAddress local_ip(192, 168, 1, 128);
+  IPAddress gateway(192, 168, 1, 1);
+  IPAddress subnet(255, 255, 0, 0);
 
-    Serial.begin(115200);
-    while (!Serial);
+  ETH.config( local_ip,
+              gateway,
+              subnet
+              // IPAddress dns1 = (uint32_t)0x00000000,
+              // IPAddress dns2 = (uint32_t)0x00000000
+            );
 
-    SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI, LORA_CS);
-    //SPI.begin(DISPLAY_SCLK, DISPLAY_MISO, DISPLAY_MOSI, DISPLAY_CS);
+  if (MDNS.begin("redtally")) {
+      Serial.println("MDNS responder started.");
+  }
 
-    Serial.println("");
-    Serial.println(name);
+  server.on("/", handleRoot);
 
-    digitalWrite(LORA_CS, HIGH);       // enable/disable cs pins for multiple spi devices
-    digitalWrite(DISPLAY_CS, LOW);
+  server.on("/inline", []() {
+      server.send(200, "text/plain", "This works as well.");
+  });
 
-    u8g2.begin();
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_6x10_tf);
-    u8g2.setContrast(defaultBrightnessDisplay);                  
-    u8g2.setFlipMode(1);
+  server.onNotFound(handleNotFound);
 
-    //        Color, Delay, Runs
-    printLogo(0, 50);
-    delay(1000);
-
-    printLoad(1, 60, 2);
-
-    printLogo(0, 25);
-    delay(500);
-
-    printLoad(1, 60, 4);
-
-    Serial.println("Version: " + version);
-    sprintf(buf_version, "%s", version);
-    u8g2.drawStr(99,60,buf_version);
-    u8g2.sendBuffer();
-
-    Serial.println("OLED init succeeded.");
-    oledInit = "OLED init";
-    sprintf(buf_oledInit, "%s", oledInit);
-    u8g2.drawStr(0,15,buf_oledInit);
-    u8g2.sendBuffer();
-    delay(300);
-
-    // override the default CS, reset, and IRQ pins (optional)
-    LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ); // set CS, reset, IRQ pin
-    LoRa.setTxPower(17);  //2-20 default 17
-    LoRa.setSpreadingFactor(7);    //6-12 default 7
-    LoRa.setSignalBandwidth(125E3);   //7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, 250E3, and 500E3 default 125E3
-    LoRa.setCodingRate4(5);   //5-8 default 5
-    LoRa.setPreambleLength(8);    //6-65535 default 8
-    LoRa.begin(868E6);  //set Frequenz 915E6 or 868E6
-
-    digitalWrite(LORA_CS, LOW);       // enable/disable cs pins for multiple spi devices
-    digitalWrite(DISPLAY_CS, HIGH);
-
-    if (!LoRa.begin(868E6)) {             // initialize ratio at 868 MHz
-        Serial.println("LoRa init failed. Check your connections.");
-        loraInit = "LoRa failed";
-        digitalWrite(LORA_CS, HIGH);       // enable/disable cs pins for multiple spi devices
-        digitalWrite(DISPLAY_CS, LOW);
-        sprintf(buf_loraInit, "%s", loraInit);   
-        u8g2.drawStr(0,35,buf_loraInit);
-        u8g2.sendBuffer();
-        digitalWrite(LORA_CS, HIGH);       // enable/disable cs pins for multiple spi devices
-        digitalWrite(DISPLAY_CS, HIGH);
-        while (true);                       // if failed, do nothing
-    }
-
-    digitalWrite(LORA_CS, HIGH);       // enable/disable cs pins for multiple spi devices
-    digitalWrite(DISPLAY_CS, LOW);
-
-    Serial.println("LoRa init succeeded.");
-    loraInit = "LoRa init";
-    sprintf(buf_loraInit, "%s", loraInit);   
-    u8g2.drawStr(0,35,buf_loraInit);
-    u8g2.sendBuffer();
-    delay(300);
-
-    pinMode(gpioP1, INPUT_PULLDOWN);
-    pinMode(gpioP2, INPUT_PULLDOWN);
-    pinMode(gpioP3, INPUT_PULLDOWN);
-    pinMode(gpioP4, INPUT_PULLDOWN);
-
-    Serial.println("Outputs init succeeded.");
-    outputInit = "Outputs init";
-    sprintf(buf_outputInit, "%s", outputInit);   
-    u8g2.drawStr(0,45,buf_outputInit);
-    u8g2.sendBuffer();
-    delay(500);
-
-    printLora(1);
-    delay(2500);
-
-    emptyDisplay();
-    printDisplay();
-
-    digitalWrite(LORA_CS, LOW);       // enable/disable cs pins for multiple spi devices
-    digitalWrite(DISPLAY_CS, HIGH);
-
-  
-
-    WiFi.onEvent(WiFiEvent);
-
-    pinMode(NRST, OUTPUT);
-
-    digitalWrite(NRST, 0);
-    delay(200);
-    digitalWrite(NRST, 1);
-    delay(200);
-    digitalWrite(NRST, 0);
-    delay(200);
-    digitalWrite(NRST, 1);
-
-    ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN,
-              ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE);
-
-    /*
-    // Use static ip address config
-    IPAddress local_ip(192, 168, 1, 128);
-    IPAddress gateway(192, 168, 1, 1);
-    IPAddress subnet(0, 0, 0, 0);
-
-    ETH.config( local_ip,
-                gateway,
-                subnet
-                // IPAddress dns1 = (uint32_t)0x00000000,
-                // IPAddress dns2 = (uint32_t)0x00000000
-              );
-    */
-    /*
-    while (!eth_connected) {
-        Serial.println("Wait for network connect ..."); delay(500);
-    }
-    */
-
-    if (MDNS.begin("esp32")) {
-        Serial.println("MDNS responder started");
-    }
-
-    server.on("/", handleRoot);
-
-    server.on("/inline", []() {
-        server.send(200, "text/plain", "this works as well");
-    });
-
-    server.onNotFound(handleNotFound);
-
-    server.begin();
-    Serial.println("HTTP server started");
+  server.begin();
+  Serial.println("HTTP server started.");
 
 }
 
 //////////////////////////////////////////////////////////////////////
 
 void loop() {
-
-  server.handleClient();
 
   // Discover Mode
   if ((mode == "discover")) {
@@ -886,7 +907,7 @@ void loop() {
   // Offer Mode
   while (mode == "offer") {
     onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &incoming, &rssi, &snr);    // Parse Packets and Read it
-    
+
     if ((incoming == "off") && (tx_adr == "bb") && (tally_bb == LOW)) {
       tally_bb = HIGH;
       tally_bb_init = HIGH;
@@ -953,6 +974,13 @@ void loop() {
       mode_s = "req";
       break;
     }
+
+    if (millis() - lastHandleClient > 500) {
+    server.handleClient();
+    Serial.println("HANDLE!!!!!!!!!");
+    lastHandleClient = millis();
+    }
+
   }
   
   // Request Mode
@@ -1121,6 +1149,12 @@ void loop() {
       printDisplay();
       break;
     }
+
+    if (millis() - lastHandleClient > 500) {
+      server.handleClient();
+      Serial.println("HANDLE!!!!!!!!!");
+      lastHandleClient = millis();
+    }
     
   }
 
@@ -1165,12 +1199,17 @@ void loop() {
           tally_bb = LOW;
           counterTallys--;
         }
-        
         printDisplay();
         mode = "request"; 
         mode_s = "req";
         emptyDisplay();
         break;
+      }
+
+      if (millis() - lastHandleClient > 500) {
+        server.handleClient();
+        Serial.println("HANDLE!!!!!!!!!");
+        lastHandleClient = millis();
       }
     }
   }
@@ -1222,6 +1261,12 @@ void loop() {
         emptyDisplay();
         break;
       }
+
+      if (millis() - lastHandleClient > 500) {
+        server.handleClient();
+        Serial.println("HANDLE!!!!!!!!!");
+        lastHandleClient = millis();
+      }
     }
   }
 
@@ -1271,6 +1316,12 @@ void loop() {
         mode_s = "req";
         emptyDisplay();
         break;
+      }
+
+      if (millis() - lastHandleClient > 500) {
+        server.handleClient();
+        Serial.println("HANDLE!!!!!!!!!");
+        lastHandleClient = millis();
       }
     }
   }
@@ -1322,6 +1373,12 @@ void loop() {
         emptyDisplay();
         break;
       }
+
+      if (millis() - lastHandleClient > 500) {
+        server.handleClient();
+        Serial.println("HANDLE!!!!!!!!!");
+        lastHandleClient = millis();
+      }
     }
   }
 
@@ -1329,6 +1386,12 @@ void loop() {
   if (millis() - lastDisplayPrint > 10000) {
     emptyDisplay();
     printDisplay();
+  }
+
+  if (millis() - lastHandleClient > 500) {
+    server.handleClient();
+    Serial.println("HANDLE!!!!!!!!!");
+    lastHandleClient = millis();
   }
   
 }
