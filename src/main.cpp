@@ -755,7 +755,7 @@ void setup() {
     pinMode(LORA_MISO, INPUT_PULLUP);
 
     SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI, LORA_CS);        //Begin and CS LORA
-
+    SPI.setFrequency(15000000);
 
     Serial.println("");
     Serial.println(name);
