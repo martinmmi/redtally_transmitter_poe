@@ -8,14 +8,13 @@
 #include <U8g2lib.h>
 #include <LoRa.h>
 #include <Preferences.h>                //lib for flashstoreage
-#include "bitmaps.h"
+#include <bitmaps.h>
 #include <ETH.h>
 #include <SPI.h>
 #include <SD.h>
-#include <WebServer.h>
+#include <SPIFFS.h>                     //lib for filesystem
+#include <ESPAsyncWebServer.h>
 #include <ESPmDNS.h>
-#include <ArduinoOTA.h>
-#include "SPIFFS.h"                     //lib for filesystem
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -72,9 +71,6 @@ char buf_bL_cc[4];
 char buf_bL_dd[4];
 char buf_bL_ee[4];
 
-const char* username = "admin";
-const char* password = "admin";
-
 ///////////////////////////////////////////////
 ///////// CHANGE for each Transmitter /////////
 
@@ -104,7 +100,6 @@ unsigned long lastAckTimeEnd = 0;
 unsigned long lastAnalogReadTime = 0;
 unsigned long lastTestTime = 0;
 unsigned long lastDisplayPrint = 0;
-unsigned long lastHandleClient = 0;
 
 int defaultBrightnessDisplay = 150;   // value from 1 to 255
 int counterSend = 0;
@@ -177,10 +172,26 @@ static bool eth_connected = false;
 #define lineWidth                            2
 #define lineHeight                          10
 
+// Stores LED state
+String ledState;
+
 //U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/ DISPLAY_CS, /* dc=*/ DISPLAY_SCLK, /* reset=*/ DISPLAY_RST);
 //U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 22, /* data=*/ 21);   // ESP32 Thing, HW I2C with pin remapping
 
-WebServer server(80);
+AsyncWebServer server(80);
+
+//////////////////////////////////////////////////////////////////////
+
+// Replaces placeholder with LED state value
+String processor(const String& var){
+  Serial.println(var);
+  if(var == "STATE"){
+
+    Serial.print(ledState);
+    return ledState;
+  }
+  return String();
+}
 
 //////////////////////////////////////////////////////////////////////
 
@@ -629,78 +640,6 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
 
 //////////////////////////////////////////////////////////////////////
 
-// Main page
-void handleRoot() {
-    String message = "REDTALLY WEBSERVICE\n\n\n";
-    message += "tally_bb: ";
-    message += tally_bb;
-    message += "   ";
-    message += gpioC1;
-    message += "   ";
-    message += rssi_bb;
-    message += " dBm";
-    message += "   ";
-    message += bL_bb;
-    message += " %";
-    message += "\n";
-    message += "tally_cc: ";
-    message += tally_cc;
-    message += "   ";
-    message += gpioC2;
-    message += "   ";
-    message += rssi_cc;
-    message += " dBm";
-    message += "   ";
-    message += bL_cc;
-    message += " %";
-    message += "\n";
-    message += "tally_dd: ";
-    message += tally_dd;
-    message += "   ";
-    message += gpioC3;
-    message += "   ";
-    message += rssi_dd;
-    message += " dBm";
-    message += "   ";
-    message += bL_dd;
-    message += " %";
-    message += "\n";
-    message += "tally_ee: ";
-    message += tally_ee;
-    message += "   ";
-    message += gpioC4;
-    message += "   ";
-    message += rssi_ee;
-    message += " dBm";
-    message += "   ";
-    message += bL_ee;
-    message += " %";
-    message += "\n";
-    server.send(200, "text/plain", message);
-}
-
-//////////////////////////////////////////////////////////////////////
-
-// Not found page
-void handleNotFound() {
-    String message = "Error 404 - File not founded.\n\n\n";
-    message += "URI: ";
-    message += server.uri();
-    message += "\nMethod: ";
-    message += (server.method() == HTTP_GET) ? "GET" : "POST";
-    message += "\nArguments: ";
-    message += server.args();
-    message += "\n";
-
-    for (uint8_t i = 0; i < server.args(); i++) {
-        message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
-    }
-
-    server.send(404, "text/plain", message);
-}
-
-//////////////////////////////////////////////////////////////////////
-
 // Function for handeling the eth communication
 void WiFiEvent(WiFiEvent_t event) {
     switch (event) {
@@ -755,10 +694,12 @@ void setup() {
     pinMode(LORA_MISO, INPUT_PULLUP);
 
     SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI, LORA_CS);        //Begin and CS LORA
-    SPI.setFrequency(15000000);
+    SPI.setFrequency(1000000);
 
     Serial.println("");
     Serial.println(name);
+
+    Serial.println("Version: " + version);
 
     digitalWrite(SD_CS, LOW);              //Select SDCard SPI Device
 
@@ -776,6 +717,7 @@ void setup() {
     digitalWrite(SD_CS, HIGH);              
     digitalWrite(DISPLAY_CS, LOW);          //Select Display SPI Device
 
+    //u8g2.setBusClock(1000000);
     //u8g2.begin();
     //u8g2.clearBuffer();
     //u8g2.setFont(u8g2_font_6x10_tf);
@@ -793,7 +735,6 @@ void setup() {
 
     printLoad(1, 60, 4);
 
-    Serial.println("Version: " + version);
     sprintf(buf_version, "%s", version);
     //u8g2.drawStr(99,60,buf_version);
     //u8g2.sendBuffer();
@@ -883,6 +824,7 @@ void setup() {
 
     ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE);
 
+    /*
     // Use static ip address config
     IPAddress local_ip(192, 168, 1, 128);
     IPAddress gateway(192, 168, 1, 1);
@@ -894,32 +836,31 @@ void setup() {
                 // IPAddress dns1 = (uint32_t)0x00000000,
                 // IPAddress dns2 = (uint32_t)0x00000000
                 );
+    */
 
     if (MDNS.begin("redtally")) {
         Serial.println("MDNS responder started.");
     }
-
-    ArduinoOTA.begin();
  
-
-    server.on ("/", []() {
-        if (!server.authenticate(username, password)) {
-            return server.requestAuthentication();
-        }
-        handleRoot();
+    // Route for root / web page
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/index.html", String(), false, processor);
+    });
+    
+    // Route to load style.css file
+    server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/style.css", "text/css");
     });
 
-
-    server.on("/inline", []() {
-        if (!server.authenticate(username, password)) {
-            return server.requestAuthentication();
-        }
-        server.send(200, "text/plain", "this works as well");
+    // Route to set GPIO to HIGH
+    server.on("/on", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/index.html", String(), false, processor);
     });
-
-    server.onNotFound(handleNotFound);
-
-
+    
+    // Route to set GPIO to LOW
+    server.on("/off", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/index.html", String(), false, processor);
+    });
 
     server.begin();
     Serial.println("HTTP server started.");
@@ -1023,13 +964,6 @@ void loop() {
             mode_s = "req";
             break;
         }
-
-        if (millis() - lastHandleClient > 2000) {
-            ArduinoOTA.handle();
-            server.handleClient();
-            lastHandleClient = millis();
-        }
-
         }
   
     // Request Mode
@@ -1198,13 +1132,6 @@ void loop() {
         printDisplay();
         break;
     }
-
-    if (millis() - lastHandleClient > 2000) {
-        ArduinoOTA.handle();
-        server.handleClient();
-        lastHandleClient = millis();
-    }
-    
     }
 
     // Control Mode BB after discover and 3 - 3.5 minutes or if BB offline, control after 9 minutes
@@ -1254,12 +1181,6 @@ void loop() {
             mode_s = "req";
             emptyDisplay();
             break;
-        }
-
-        if (millis() - lastHandleClient > 2000) {
-            ArduinoOTA.handle();
-            server.handleClient();
-            lastHandleClient = millis();
         }
         }
     }
@@ -1312,12 +1233,6 @@ void loop() {
                 emptyDisplay();
                 break;
             }
-
-            if (millis() - lastHandleClient > 2000) {
-                ArduinoOTA.handle();
-                server.handleClient();
-                lastHandleClient = millis();
-            }
             }
         }
 
@@ -1368,12 +1283,6 @@ void loop() {
                 mode_s = "req";
                 emptyDisplay();
                 break;
-            }
-
-            if (millis() - lastHandleClient > 2000) {
-                ArduinoOTA.handle();
-                server.handleClient();
-                lastHandleClient = millis();
             }
             }
         }
@@ -1426,12 +1335,6 @@ void loop() {
                 emptyDisplay();
                 break;
             }
-
-            if (millis() - lastHandleClient > 2000) {
-                ArduinoOTA.handle();
-                server.handleClient();
-                lastHandleClient = millis();
-            }
             }
         }
 
@@ -1439,12 +1342,6 @@ void loop() {
         if (millis() - lastDisplayPrint > 10000) {
             emptyDisplay();
             printDisplay();
-        }
-
-        if (millis() - lastHandleClient > 2000) {
-            ArduinoOTA.handle();
-            server.handleClient();
-            lastHandleClient = millis();
         }
   
 }
