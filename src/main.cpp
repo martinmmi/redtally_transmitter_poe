@@ -24,10 +24,6 @@
 #include <Wire.h>
 #endif
 
-uint32_t cpu_frequency = 0;
-uint32_t xtal_frequency = 0;
-uint32_t apb_frequency = 0;
-
 String mode = "discover";
 String mode_s = "dis";
 String name = "REDTALLY Transmitter";      // Device Name
@@ -72,13 +68,15 @@ char buf_bL_dd[4];
 char buf_bL_ee[4];
 
 ///////////////////////////////////////////////
-///////// CHANGE for each Transmitter /////////
+///////// Setup Transmitter Values ////////////
+///////////////////////////////////////////////
 
 byte localAddress = 0xaa;                 // Address of this device  
 String string_localAddress = "aa";                                    
 byte destination = 0xff;                  // Destination to send to              
 String string_destinationAddress = "ff";            
 
+///////////////////////////////////////////////
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
 
@@ -111,6 +109,21 @@ int gpioV1Map, gpioV2Map, gpioV3Map, gpioV4Map;
 int missed_bb, missed_cc, missed_dd, missed_ee;
 int buf_rssi_bb_int, buf_rssi_cc_int, buf_rssi_dd_int, buf_rssi_ee_int;
 
+///////////////////////////////////////////////
+//////////// Setup LORA Values ////////////////
+///////////////////////////////////////////////
+
+int loraTxPower = 17;                   //2-20 default 17
+int loraSpreadingFactor = 7;            //6-12 default  7
+double loraSignalBandwidth = 125E3;     //7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, 250E3, and 500E3 default 125E3
+int loraCodingRate = 5;                 //5-8 default 5
+int loraPreambleLength = 8;             //6-65535 default 8
+double loraFrequenz = 868E6;            //set Frequenz 915E6 or 868E6
+
+///////////////////////////////////////////////
+///////////////////////////////////////////////
+///////////////////////////////////////////////
+
 float gpioV1Cal, gpioV2Cal, gpioV3Cal, gpioV4Cal;
 
 bool gpioC1 = HIGH;
@@ -129,7 +142,24 @@ bool initBattery = HIGH;
 bool batteryAttention = LOW;
 bool batteryAttentionState = LOW;
 
-static bool eth_connected = false;
+static bool ethConnected = false;
+static bool useSTATIC = false;
+static bool useDNS = false;
+
+///////////////////////////////////////////////
+/////////// Setup Network Values //////////////
+///////////////////////////////////////////////
+    
+// Use static ip address config
+IPAddress local_ip (192, 168, 0, 55);       //uint32_t
+IPAddress gateway (192, 168, 0, 1);
+IPAddress subnet (255, 255, 255, 0);
+IPAddress dns1 (0, 0, 0, 0);
+IPAddress dns2 (0, 0, 0, 0);
+
+///////////////////////////////////////////////
+///////////////////////////////////////////////
+///////////////////////////////////////////////
 
 #define ETH_CLK_MODE ETH_CLOCK_GPIO17_OUT       //ETH_CLOCK_GPIO17_OUT - 50MHz clock from internal APLL inverted output on GPIO17 - tested with LAN8720
 #define ETH_POWER_PIN                       16  // Pin# of the enable signal for the external crystal oscillator (-1 to disable for internal APLL source)
@@ -181,6 +211,8 @@ String ledState;
 AsyncWebServer server(80);
 
 //////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 
 // Replaces placeholder with LED state value
 String processor(const String& var){
@@ -193,6 +225,8 @@ String processor(const String& var){
   return String();
 }
 
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
 void printLogo(int color, int wait) {
@@ -311,6 +345,8 @@ void printLora(int color) {
 }
 
 //////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 
 void sendMessage(String message) {
     digitalWrite(LORA_CS, LOW);           //Select LORA SPI Device
@@ -328,6 +364,8 @@ void sendMessage(String message) {
     digitalWrite(LORA_CS, HIGH);           //Select LORA SPI Device
 }
 
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
 void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *ptr_incoming, String *ptr_rssi, String *ptr_bL, String *ptr_snr) {  
@@ -394,6 +432,8 @@ void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *p
 }
 
 //////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 
 void emptyDisplay() {
     string_destinationAddress = "";
@@ -405,6 +445,8 @@ void emptyDisplay() {
     snr = "";
 }
 
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
 void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Receive Address
@@ -426,9 +468,6 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
     Serial.print("Tally dd init: "); Serial.println(tally_dd_init);
     Serial.print("Tally ee: "); Serial.println(tally_ee);
     Serial.print("Tally ee init: "); Serial.println(tally_ee_init);
-    Serial.print("CPU Frequency: "); Serial.print(cpu_frequency); Serial.println(" MHz");
-    Serial.print("XTAL Frequency: "); Serial.print(xtal_frequency); Serial.println(" MHz");
-    Serial.print("APB Frequency: "); Serial.print(apb_frequency); Serial.println(" Hz");
     */
 
     digitalWrite(DISPLAY_CS, LOW);      //Select Display SPI Device
@@ -644,11 +683,11 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
 void WiFiEvent(WiFiEvent_t event) {
     switch (event) {
     case ARDUINO_EVENT_ETH_START:
-        Serial.println("ETH Started.");
+        Serial.println("ETH started.");
         ETH.setHostname("REDTALLY");     //set eth hostname here
         break;
     case ARDUINO_EVENT_ETH_CONNECTED:
-        Serial.println("ETH Connected.");
+        Serial.println("ETH connected.");
         break;
     case ARDUINO_EVENT_ETH_GOT_IP:
         Serial.print("ETH MAC: ");
@@ -661,15 +700,15 @@ void WiFiEvent(WiFiEvent_t event) {
         Serial.print(", ");
         Serial.print(ETH.linkSpeed());
         Serial.println("Mbps.");
-        eth_connected = true;
+        ethConnected = true;
         break;
     case ARDUINO_EVENT_ETH_DISCONNECTED:
-        Serial.println("ETH Disconnected.");
-        eth_connected = false;
+        Serial.println("ETH disconnected.");
+        ethConnected = false;
         break;
     case ARDUINO_EVENT_ETH_STOP:
-        Serial.println("ETH Stopped.");
-        eth_connected = false;
+        Serial.println("ETH stopped.");
+        ethConnected = false;
         break;
     default:
         break;
@@ -677,31 +716,30 @@ void WiFiEvent(WiFiEvent_t event) {
 }
 
 //////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 
 void setup() {
-
-    //setCpuFrequencyMhz(80);               // Set CPU Frequenz 240, 160, 80, 40, 20, 10 Mhz
-
-    cpu_frequency = getCpuFrequencyMhz();
-    xtal_frequency = getXtalFrequencyMhz();
-    apb_frequency = getApbFrequency();
 
     Serial.begin(115200);
     while (!Serial);
 
-    pinMode(DISPLAY_CS, OUTPUT);                                //CS Display
-    pinMode(SD_CS, OUTPUT);                                     //CS SD-Reader
-    pinMode(LORA_MISO, INPUT_PULLUP);
-
-    SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI, LORA_CS);        //Begin and CS LORA
-    SPI.setFrequency(1000000);
-
     Serial.println("");
     Serial.println(name);
-
     Serial.println("Version: " + version);
 
-    digitalWrite(SD_CS, LOW);              //Select SDCard SPI Device
+    pinMode(DISPLAY_CS, OUTPUT);                                //CS Display
+    pinMode(LORA_CS, OUTPUT);                                   //CS LORA
+    pinMode(SD_CS, OUTPUT);                                     //CS SD-Reader
+    pinMode(SD_MISO, INPUT_PULLUP);
+
+    digitalWrite(LORA_CS, HIGH);
+    digitalWrite(DISPLAY_CS, HIGH);
+    digitalWrite(SD_CS, LOW);
+
+//////////////////////////////////////////////////////////////////////
+
+    SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);                      
 
     while (true) {
             if (SD.begin(SD_CS)) {
@@ -714,8 +752,11 @@ void setup() {
             break;
         }
 
-    digitalWrite(SD_CS, HIGH);              
-    digitalWrite(DISPLAY_CS, LOW);          //Select Display SPI Device
+    digitalWrite(LORA_CS, HIGH);
+    digitalWrite(DISPLAY_CS, LOW);
+    digitalWrite(SD_CS, HIGH);         //Select Display SPI Device
+
+//////////////////////////////////////////////////////////////////////
 
     //u8g2.setBusClock(1000000);
     //u8g2.begin();
@@ -727,12 +768,9 @@ void setup() {
     //        Color, Delay, Runs
     printLogo(0, 50);
     delay(1000);
-
     printLoad(1, 60, 2);
-
     printLogo(0, 25);
     delay(500);
-
     printLoad(1, 60, 4);
 
     sprintf(buf_version, "%s", version);
@@ -746,35 +784,41 @@ void setup() {
     //u8g2.sendBuffer();
     delay(300);
 
-    digitalWrite(DISPLAY_CS, HIGH);    
-    digitalWrite(LORA_CS, LOW);          //Select LORA SPI Device      
+    digitalWrite(LORA_CS, LOW);
+    digitalWrite(DISPLAY_CS, HIGH);
+    digitalWrite(SD_CS, HIGH);                                        //Select Display SPI Device 
 
-    // override the default CS, reset, and IRQ pins (optional)
-    LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ); // set CS, reset, IRQ pin
-    LoRa.setTxPower(17);  //2-20 default 17
-    LoRa.setSpreadingFactor(7);    //6-12 default 7
-    LoRa.setSignalBandwidth(125E3);   //7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, 250E3, and 500E3 default 125E3
-    LoRa.setCodingRate4(5);   //5-8 default 5
-    LoRa.setPreambleLength(8);    //6-65535 default 8
-    LoRa.begin(868E6);  //set Frequenz 915E6 or 868E6
+//////////////////////////////////////////////////////////////////////  
 
-    if (!LoRa.begin(868E6)) {             // initialize ratio at 868 MHz
-        Serial.println("LoRa init failed. Check your connections.");
-        loraInit = "LoRa failed";
-        digitalWrite(LORA_CS, HIGH);       
-        digitalWrite(DISPLAY_CS, LOW);        //Select Display SPI Device   
+    LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
+    LoRa.setTxPower(loraTxPower);
+    LoRa.setSpreadingFactor(loraSpreadingFactor);    
+    LoRa.setSignalBandwidth(loraSignalBandwidth);
+    LoRa.setCodingRate4(loraCodingRate);
+    LoRa.setPreambleLength(loraPreambleLength);
+    LoRa.begin(loraFrequenz);
+
+    if (!LoRa.begin(loraFrequenz)) {                                 // initialize lora frequenz
+        Serial.println("LORA init failed. Check your connections.");
+        loraInit = "LORA failed";
+        digitalWrite(LORA_CS, HIGH);
+        digitalWrite(DISPLAY_CS, LOW);
+        digitalWrite(SD_CS, HIGH);                                  //Select Display SPI Device    
         sprintf(buf_loraInit, "%s", loraInit);   
         //u8g2.drawStr(0,35,buf_loraInit);
         //u8g2.sendBuffer();
         digitalWrite(DISPLAY_CS, HIGH);     
-        while (true);                       // if failed, do nothing
+        while (true);                                               // if failed, do nothing
     }
 
-    digitalWrite(LORA_CS, HIGH);       
-    digitalWrite(DISPLAY_CS, LOW);      //Select Display SPI Device   
+    digitalWrite(LORA_CS, HIGH);
+    digitalWrite(DISPLAY_CS, LOW);
+    digitalWrite(SD_CS, HIGH);                                       //Select Display SPI Device   
 
-    Serial.println("LoRa init succeeded.");
-    loraInit = "LoRa init";
+//////////////////////////////////////////////////////////////////////
+
+    Serial.println("LORA init succeeded.");
+    loraInit = "LORA init";
     sprintf(buf_loraInit, "%s", loraInit);   
     //u8g2.drawStr(0,35,buf_loraInit);
     //u8g2.sendBuffer();
@@ -798,17 +842,19 @@ void setup() {
     emptyDisplay();
     printDisplay();
 
+    digitalWrite(LORA_CS, HIGH);
     digitalWrite(DISPLAY_CS, HIGH);
+    digitalWrite(SD_CS, HIGH);         //Select Display SPI Device   
 
-
+//////////////////////////////////////////////////////////////////////
 
     if(!SPIFFS.begin(true)){
-        Serial.println("An Error has occurred while mounting SPIFFS");
+        Serial.println("SPIFFS init failed. An Error has occurred while mounting SPIFFS");
         return;
     }
     Serial.println("SPIFFS init succeeded.");
 
-
+//////////////////////////////////////////////////////////////////////
 
     WiFi.onEvent(WiFiEvent);
 
@@ -824,23 +870,21 @@ void setup() {
 
     ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE);
 
-    /*
-    // Use static ip address config
-    IPAddress local_ip(192, 168, 1, 128);
-    IPAddress gateway(192, 168, 1, 1);
-    IPAddress subnet(255, 255, 0, 0);
+    if ((useSTATIC == true) && (useDNS = false)) {
+        ETH.config(local_ip, gateway, subnet);
+    }
 
-    ETH.config( local_ip,
-                gateway,
-                subnet
-                // IPAddress dns1 = (uint32_t)0x00000000,
-                // IPAddress dns2 = (uint32_t)0x00000000
-                );
-    */
+    if ((useSTATIC == true) && (useDNS = true)) {
+        ETH.config(local_ip, gateway, subnet, dns1, dns2);
+    }
+
+//////////////////////////////////////////////////////////////////////
 
     if (MDNS.begin("redtally")) {
         Serial.println("MDNS responder started.");
     }
+
+//////////////////////////////////////////////////////////////////////
  
     // Route for root / web page
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -868,6 +912,8 @@ void setup() {
     }
 
 //////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 
 void loop() {
 
@@ -878,7 +924,7 @@ void loop() {
         outgoing = "dis-anyrec?";         // Send a message
         sendMessage(outgoing);
         printDisplay();
-        Serial.println("TxD: " + outgoing);
+        Serial.println("LORA TxD: " + outgoing);
         lastOfferTime = millis();
         lastOfferTimeRef = millis();
         lastDiscoverTimebb = millis();
@@ -895,6 +941,7 @@ void loop() {
         onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &incoming, &rssi, &bL, &snr);    // Parse Packets and Read it
 
         if ((incoming == "off") && (tx_adr == "bb") && (tally_bb == LOW)) {
+            Serial.println("LORA RxD: " + incoming);
             tally_bb = HIGH;
             tally_bb_init = HIGH;
             incoming_bb = incoming;
@@ -908,6 +955,7 @@ void loop() {
             emptyDisplay();
         }
         if ((incoming == "off") && (tx_adr == "cc") && (tally_cc == LOW)) {
+            Serial.println("LORA RxD: " + incoming);
             tally_cc = HIGH;
             tally_cc_init = HIGH;
             incoming_cc = incoming;
@@ -921,6 +969,7 @@ void loop() {
             emptyDisplay();
         }
         if ((incoming == "off") && (tx_adr == "dd") && (tally_dd == LOW)) {
+            Serial.println("LORA RxD: " + incoming);
             tally_dd = HIGH;
             tally_dd_init = HIGH;
             incoming_dd = incoming;
@@ -934,6 +983,7 @@ void loop() {
             emptyDisplay();
         }
         if ((incoming == "off") && (tx_adr == "ee") && (tally_ee == LOW)) {
+            Serial.println("LORA RxD: " + incoming);
             tally_ee = HIGH;
             tally_ee_init = HIGH;
             incoming_ee = incoming;
@@ -988,7 +1038,7 @@ void loop() {
             outgoing = "req-high";         // Send a message
             sendMessage(outgoing);
             printDisplay();
-            Serial.println("TxD: " + outgoing);
+            Serial.println("LORA TxD: " + outgoing);
             gpioC1 = !gpioC1;
             mode = "acknowledge";
             mode_s = "ack";
@@ -1002,7 +1052,7 @@ void loop() {
             outgoing = "req-low";         // Send a message
             sendMessage(outgoing);
             printDisplay();
-            Serial.println("TxD: " + outgoing);
+            Serial.println("LORA TxD: " + outgoing);
             gpioC1 = !gpioC1;
             mode = "acknowledge";
             mode_s = "ack";
@@ -1016,7 +1066,7 @@ void loop() {
             outgoing = "req-high";         // Send a message
             sendMessage(outgoing);
             printDisplay();
-            Serial.println("TxD: " + outgoing);
+            Serial.println("LORA TxD: " + outgoing);
             gpioC2 = !gpioC2;
             mode = "acknowledge";
             mode_s = "ack";
@@ -1030,7 +1080,7 @@ void loop() {
             outgoing = "req-low";         // Send a message
             sendMessage(outgoing);
             printDisplay();
-            Serial.println("TxD: " + outgoing);
+            Serial.println("LORA TxD: " + outgoing);
             gpioC2 = !gpioC2;
             mode = "acknowledge";
             mode_s = "ack";
@@ -1044,7 +1094,7 @@ void loop() {
             outgoing = "req-high";         // Send a message
             sendMessage(outgoing);
             printDisplay();
-            Serial.println("TxD: " + outgoing);
+            Serial.println("LORA TxD: " + outgoing);
             gpioC3 = !gpioC3;
             mode = "acknowledge";
             mode_s = "ack";
@@ -1058,7 +1108,7 @@ void loop() {
             outgoing = "req-low";         // Send a message
             sendMessage(outgoing);
             printDisplay();
-            Serial.println("TxD: " + outgoing);
+            Serial.println("LORA TxD: " + outgoing);
             gpioC3 = !gpioC3;
             mode = "acknowledge";
             mode_s = "ack";
@@ -1072,7 +1122,7 @@ void loop() {
             outgoing = "req-high";         // Send a message
             sendMessage(outgoing);
             printDisplay();
-            Serial.println("TxD: " + outgoing);
+            Serial.println("LORA TxD: " + outgoing);
             gpioC4 = !gpioC4;
             mode = "acknowledge";
             mode_s = "ack";
@@ -1086,7 +1136,7 @@ void loop() {
             outgoing = "req-low";         // Send a message
             sendMessage(outgoing);
             printDisplay();
-            Serial.println("TxD: " + outgoing);
+            Serial.println("LORA TxD: " + outgoing);
             gpioC4 = !gpioC4;
             mode = "acknowledge";
             mode_s = "ack";
@@ -1102,6 +1152,7 @@ void loop() {
     
         // Back to Request Mode
         if ((incoming == "ack") && ((tx_adr == "bb") || (tx_adr == "cc") || (tx_adr == "dd") ||  (tx_adr == "ee"))) {
+            Serial.println("LORA RxD: " + incoming);
             printDisplay();
             mode = "request";
             mode_s = "req";
@@ -1141,7 +1192,7 @@ void loop() {
         outgoing = "con-rec?";         // Send a message
         sendMessage(outgoing);
         printDisplay();
-        Serial.println("TxD: " + outgoing);
+        Serial.println("LORA TxD: " + outgoing);
         lastDiscoverTimebb = millis();
         lastControlTime = millis();
         mode = "control";
@@ -1152,6 +1203,7 @@ void loop() {
         onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &incoming, &rssi, &bL, &snr);    // Parse Packets and Read it
 
         if ((incoming == "con") && (tx_adr == "bb")) {
+            Serial.println("LORA RxD: " + incoming);
             if (tally_bb_init == LOW) {
             counterTallys++;
             }
@@ -1192,7 +1244,7 @@ void loop() {
         outgoing = "con-rec?";         // Send a message
         sendMessage(outgoing);
         printDisplay();
-        Serial.println("TxD: " + outgoing);
+        Serial.println("LORA TxD: " + outgoing);
         lastDiscoverTimecc = millis();
         lastControlTime = millis();
         mode = "control";
@@ -1203,6 +1255,7 @@ void loop() {
             onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &incoming, &rssi, &bL, &snr);    // Parse Packets and Read it
       
             if ((incoming == "con") && (tx_adr == "cc")) {
+                Serial.println("LORA RxD: " + incoming);
                 if (tally_cc_init == LOW) {
                 counterTallys++;
                 }
@@ -1243,7 +1296,7 @@ void loop() {
         outgoing = "con-rec?";         // Send a message
         sendMessage(outgoing);
         printDisplay();
-        Serial.println("TxD: " + outgoing);
+        Serial.println("LORA TxD: " + outgoing);
         lastDiscoverTimedd = millis();
         lastControlTime = millis();
         mode = "control";
@@ -1254,6 +1307,7 @@ void loop() {
             onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &incoming, &rssi, &bL, &snr);    // Parse Packets and Read it
             
             if ((incoming == "con") && (tx_adr == "dd")) {
+                Serial.println("LORA RxD: " + incoming);
                 if (tally_dd_init == LOW) {
                 counterTallys++;
                 }
@@ -1294,7 +1348,7 @@ void loop() {
         outgoing = "con-rec?";         // Send a message
         sendMessage(outgoing);
         printDisplay();
-        Serial.println("TxD: " + outgoing);
+        Serial.println("LORA TxD: " + outgoing);
         lastDiscoverTimeee = millis();
         lastControlTime = millis();
         mode = "control";
@@ -1305,6 +1359,7 @@ void loop() {
             onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &incoming, &rssi, &bL, &snr);    // Parse Packets and Read it
             
             if ((incoming == "con") && (tx_adr == "ee")) {
+                Serial.println("LORA RxD: " + incoming);
                 if (tally_ee_init == LOW) {
                 counterTallys++;
                 }
@@ -1346,6 +1401,8 @@ void loop() {
   
 }
 
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
