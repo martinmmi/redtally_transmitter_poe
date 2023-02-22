@@ -38,6 +38,7 @@ String tx_adr_bb, tx_adr_cc, tx_adr_dd, tx_adr_ee;
 String incoming_bb, incoming_cc, incoming_dd, incoming_ee;
 String rssi_bb, rssi_cc, rssi_dd, rssi_ee;
 String bL_bb, bL_cc, bL_dd, bL_ee;
+String html_state_bb, html_state_cc, html_state_dd, html_state_ee;
 
 String oledInit;
 String loraInit;
@@ -202,9 +203,6 @@ IPAddress dns2 (0, 0, 0, 0);
 #define lineWidth                            2
 #define lineHeight                          10
 
-// Stores LED state
-String ledState;
-
 //U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/ DISPLAY_CS, /* dc=*/ DISPLAY_MISO, /* reset=*/ DISPLAY_RST);
 //U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 22, /* data=*/ 21);   // ESP32 Thing, HW I2C with pin remapping
 
@@ -214,14 +212,80 @@ AsyncWebServer server(80);
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
-// Replaces placeholder with LED state value
-String processor(const String& var){
-  Serial.println(var);
-  if(var == "STATE"){
+String proc_state(const String& state){
 
-    Serial.print(ledState);
-    return ledState;
-  }
+    if(state == "STATE_BB"){
+        if(tally_bb == HIGH) {
+            html_state_bb = "ONLINE";
+            }
+            else{
+            html_state_bb = "OFFLINE";
+            }
+            return html_state_bb;
+    }
+
+    if(state == "STATE_CC"){
+        if(tally_cc == HIGH) {
+            html_state_cc = "ONLINE";
+            }
+            else{
+            html_state_cc = "OFFLINE";
+            }
+            return html_state_cc;
+    }
+
+    if(state == "STATE_DD"){
+        if(tally_dd == HIGH) {
+            html_state_dd = "ONLINE";
+            }
+            else{
+            html_state_dd = "OFFLINE";
+            }
+            return html_state_dd;
+    }
+
+    if(state == "STATE_EE"){
+        if(tally_ee == HIGH) {
+            html_state_ee = "ONLINE";
+            }
+            else{
+            html_state_ee = "OFFLINE";
+            }
+            return html_state_ee;
+    }
+
+    if(state == "RSSI_BB"){        
+            return rssi_bb;
+    }
+
+    if(state == "RSSI_CC"){        
+            return rssi_cc;
+    }
+
+    if(state == "RSSI_DD"){        
+            return rssi_dd;
+    }
+
+    if(state == "RSSI_EE"){        
+            return rssi_ee;
+    }
+
+    if(state == "BL_BB"){        
+            return bL_bb;
+    }
+
+    if(state == "BL_CC"){        
+            return bL_cc;
+    }
+
+    if(state == "BL_DD"){        
+            return bL_dd;
+    }
+
+    if(state == "BL_EE"){        
+            return bL_ee;
+    }
+
   return String();
 }
 
@@ -888,7 +952,7 @@ void setup() {
  
     // Route for root / web page
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/index.html", String(), false, processor);
+        request->send(SPIFFS, "/index.html", String(), false, proc_state);
     });
     
     // Route to load style.css file
@@ -897,13 +961,13 @@ void setup() {
     });
 
     // Route to set GPIO to HIGH
-    server.on("/on", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/index.html", String(), false, processor);
+    server.on("/network", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/network.html");
     });
     
     // Route to set GPIO to LOW
-    server.on("/off", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/index.html", String(), false, processor);
+    server.on("/info", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/info.html");
     });
 
     server.begin();
