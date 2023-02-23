@@ -27,7 +27,7 @@
 String mode = "discover";
 String mode_s = "dis";
 String name = "REDTALLY Transmitter";      // Device Name
-String version = "0.0a";                   // Frimeware Version
+String version = "T0.01";                   // Frimeware Version
 String bb = "bb";
 String cc = "cc";
 String dd = "dd";
@@ -39,6 +39,7 @@ String incoming_bb, incoming_cc, incoming_dd, incoming_ee;
 String rssi_bb, rssi_cc, rssi_dd, rssi_ee;
 String bL_bb, bL_cc, bL_dd, bL_ee;
 String html_state_bb, html_state_cc, html_state_dd, html_state_ee;
+String html_state_dhcp, html_state_dns, html_state_esm;
 
 String oledInit;
 String loraInit;
@@ -142,10 +143,10 @@ bool tally_ee_init = LOW;
 bool initBattery = HIGH;
 bool batteryAttention = LOW;
 bool batteryAttentionState = LOW;
-
-static bool ethConnected = false;
-static bool useSTATIC = false;
-static bool useDNS = false;
+bool ethConnected = false;
+bool useSTATIC = false;
+bool useDNS = false;
+bool bool_esm = false; 
 
 ///////////////////////////////////////////////
 /////////// Setup Network Values //////////////
@@ -207,6 +208,8 @@ IPAddress dns2 (0, 0, 0, 0);
 //U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 22, /* data=*/ 21);   // ESP32 Thing, HW I2C with pin remapping
 
 AsyncWebServer server(80);
+
+Preferences eeprom;            //Initiate Flash Memory
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
@@ -284,6 +287,40 @@ String proc_state(const String& state){
 
     if(state == "BL_EE"){        
             return bL_ee;
+    }
+
+    if(state == "STATE_DHCP"){
+        if(useSTATIC == true){
+            html_state_dhcp = "OFF";
+        }
+        else{
+            html_state_dhcp = "ON";
+        }
+        return html_state_dhcp;
+    }
+
+    if(state == "STATE_DNS"){
+        if(useDNS == true){
+            html_state_dns = "ON";
+        }
+        else{
+            html_state_dns = "OFF";
+        }
+        return html_state_dns;
+    }
+
+    if(state == "STATE_ESM"){
+        if(bool_esm == true){
+            html_state_esm = "ON";
+        }
+        else{
+            html_state_esm = "OFF";
+        }
+        return html_state_esm;
+    }
+
+    if(state == "STATE_VERSION"){
+            return version;
     }
 
   return String();
@@ -803,6 +840,20 @@ void setup() {
 
 //////////////////////////////////////////////////////////////////////
 
+    eeprom.begin("network", false);                //false mean use read/write mode
+    useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
+    useDNS = eeprom.getBool("dns", false);
+    //Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
+    //Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
+    eeprom.end();
+
+    eeprom.begin("configuration", false);         
+    bool_esm = eeprom.getBool("esm", false);
+    //Serial.print("bool_esm: "); Serial.print(bool_esm); Serial.print(" Size: "); Serial.println(sizeof(bool_esm));
+    eeprom.end();
+
+//////////////////////////////////////////////////////////////////////
+
     SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);                      
 
     while (true) {
@@ -960,14 +1011,88 @@ void setup() {
         request->send(SPIFFS, "/style.css", "text/css");
     });
 
-    // Route to set GPIO to HIGH
+    // Route to load style.css file
+    server.on("/network/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/style.css", "text/css");
+    });
+
+    // Route to load style.css file
+    server.on("/configuration/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/style.css", "text/css");
+    });
+
     server.on("/network", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/network.html");
+        request->send(SPIFFS, "/network.html", String(), false, proc_state);
+    });
+
+    server.on("/dhcp-on", HTTP_GET, [](AsyncWebServerRequest *request){
+        useSTATIC = false;
+        Serial.println("WRITE!");
+        eeprom.begin("network", false);                //false mean use read/write mode
+        eeprom.putBool("dhcp", useSTATIC);     
+        eeprom.end();
+        request->send(SPIFFS, "/network.html", String(), false, proc_state);
+        delay(2000);
+        ESP.restart();
+    });
+
+    server.on("/dhcp-off", HTTP_GET, [](AsyncWebServerRequest *request){
+        useSTATIC = true;
+        Serial.println("WRITE!");
+        eeprom.begin("network", false);                //false mean use read/write mode
+        eeprom.putBool("dhcp", useSTATIC);     
+        eeprom.end();
+        request->send(SPIFFS, "/network.html", String(), false, proc_state);
+        delay(2000);
+        ESP.restart();
+    });
+
+    server.on("/dns-on", HTTP_GET, [](AsyncWebServerRequest *request){
+        useDNS = true;
+        eeprom.begin("network", false);                //false mean use read/write mode
+        eeprom.putBool("dns", useDNS);     
+        eeprom.end();
+        request->send(SPIFFS, "/network.html", String(), false, proc_state);
+        delay(2000);
+        ESP.restart();
+    });
+
+    server.on("/dns-off", HTTP_GET, [](AsyncWebServerRequest *request){
+        useDNS = false;
+        eeprom.begin("network", false);                //false mean use read/write mode
+        eeprom.putBool("dns", useDNS);     
+        eeprom.end();
+        request->send(SPIFFS, "/network.html", String(), false, proc_state);
+        delay(2000);
+        ESP.restart();
+    });
+
+    server.on("/configuration", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+    });
+
+    server.on("/esm-on", HTTP_GET, [](AsyncWebServerRequest *request){
+        bool_esm = true;
+        if (bool_esm == true){ esm = 0x01; }
+        if (bool_esm == false){ esm = 0x00; }
+        eeprom.begin("configuration", false);                //false mean use read/write mode
+        eeprom.putBool("esm", bool_esm);     
+        eeprom.end();
+        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+    });
+
+    server.on("/esm-off", HTTP_GET, [](AsyncWebServerRequest *request){
+        bool_esm = false;
+        if (bool_esm == true){ esm = 0x01; }
+        if (bool_esm == false){ esm = 0x00; }
+        eeprom.begin("configuration", false);                //false mean use read/write mode
+        eeprom.putBool("esm", bool_esm);     
+        eeprom.end();
+        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
     });
     
-    // Route to set GPIO to LOW
     server.on("/info", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/info.html");
+        request->send(SPIFFS, "/info.html", String(), false, proc_state);
     });
 
     server.begin();
