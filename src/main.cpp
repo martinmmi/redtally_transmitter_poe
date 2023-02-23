@@ -843,8 +843,8 @@ void setup() {
     eeprom.begin("network", false);                //false mean use read/write mode
     useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
     useDNS = eeprom.getBool("dns", false);
-    //Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
-    //Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
+    Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
+    Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
     eeprom.end();
 
     eeprom.begin("configuration", false);         
@@ -1031,6 +1031,8 @@ void setup() {
         eeprom.begin("network", false);                //false mean use read/write mode
         eeprom.putBool("dhcp", useSTATIC);     
         eeprom.end();
+        Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
+        Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
         request->send(SPIFFS, "/network.html", String(), false, proc_state);
         delay(2000);
         ESP.restart();
@@ -1042,6 +1044,8 @@ void setup() {
         eeprom.begin("network", false);                //false mean use read/write mode
         eeprom.putBool("dhcp", useSTATIC);     
         eeprom.end();
+        Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
+        Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
         request->send(SPIFFS, "/network.html", String(), false, proc_state);
         delay(2000);
         ESP.restart();
@@ -1052,6 +1056,8 @@ void setup() {
         eeprom.begin("network", false);                //false mean use read/write mode
         eeprom.putBool("dns", useDNS);     
         eeprom.end();
+        Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
+        Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
         request->send(SPIFFS, "/network.html", String(), false, proc_state);
         delay(2000);
         ESP.restart();
@@ -1062,6 +1068,8 @@ void setup() {
         eeprom.begin("network", false);                //false mean use read/write mode
         eeprom.putBool("dns", useDNS);     
         eeprom.end();
+        Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
+        Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
         request->send(SPIFFS, "/network.html", String(), false, proc_state);
         delay(2000);
         ESP.restart();
