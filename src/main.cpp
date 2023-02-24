@@ -43,7 +43,6 @@ String html_state_dhcp, html_state_dns, html_state_esm;
 
 String oledInit;
 String loraInit;
-String outputInit;
 
 char buf_tx[12];
 char buf_rx[12];
@@ -59,7 +58,6 @@ char buf_rxAdr[5];
 char buf_txAdr[5];
 char buf_oledInit[12];
 char buf_loraInit[12];
-char buf_outputInit[12];
 char buf_rssi_bb[4];
 char buf_rssi_cc[4];
 char buf_rssi_dd[4];
@@ -204,7 +202,7 @@ IPAddress dns2 (0, 0, 0, 0);
 #define lineWidth                            2
 #define lineHeight                          10
 
-//U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/ DISPLAY_CS, /* dc=*/ DISPLAY_MISO, /* reset=*/ DISPLAY_RST);
+U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/ DISPLAY_CS, /* dc=*/ DISPLAY_MISO, /* reset=*/ DISPLAY_RST);
 //U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 22, /* data=*/ 21);   // ESP32 Thing, HW I2C with pin remapping
 
 AsyncWebServer server(80);
@@ -331,7 +329,7 @@ String proc_state(const String& state){
 //////////////////////////////////////////////////////////////////////
 
 void printLogo(int color, int wait) {
-    /*
+    
     u8g2.setDrawColor(color);
     
     // logo 1
@@ -384,11 +382,11 @@ void printLogo(int color, int wait) {
     do { u8g2.drawXBM(0, 0, logoWidth, logoHeight, logo10); }
     while (u8g2.nextPage());
     delay(wait);
-    */
+    
 }
 
 void printLoad(int color, int wait, int count) {
-    /*
+    
     u8g2.setDrawColor(color);
 
     for (int i=0; i < count; i++) {
@@ -433,16 +431,16 @@ void printLoad(int color, int wait, int count) {
         while (u8g2.nextPage());
         delay(wait);
         }
-        */
+        
 }
 
 void printLora(int color) {
-    /*
+    
     u8g2.setDrawColor(color);
     u8g2.firstPage();
     do { u8g2.drawXBM(0, 0, loraWidth, loraHeight, lora); }
     while (u8g2.nextPage());
-    */
+    
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -450,7 +448,6 @@ void printLora(int color) {
 //////////////////////////////////////////////////////////////////////
 
 void sendMessage(String message) {
-    digitalWrite(LORA_CS, LOW);           //Select LORA SPI Device
     LoRa.beginPacket();                   // start packet
     LoRa.write(destination);              // add destination address
     LoRa.write(localAddress);             // add sender address
@@ -462,15 +459,14 @@ void sendMessage(String message) {
     LoRa.print(message);                  // add payload
     LoRa.endPacket();                     // finish packet and send it
     msgCount++;                           // increment message ID
-    digitalWrite(LORA_CS, HIGH);           //Select LORA SPI Device
 }
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
-void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *ptr_incoming, String *ptr_rssi, String *ptr_bL, String *ptr_snr) {  
-    digitalWrite(LORA_CS, LOW);           //Select LORA SPI Device
+void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *ptr_incoming, String *ptr_rssi, String *ptr_bL, String *ptr_snr) { 
+     
     if (packetSize == 0) return;          // if there's no packet, return
 
     //Clear the variables
@@ -528,7 +524,6 @@ void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *p
     *ptr_bL = String(byte_bL);
     *ptr_snr = String(LoRa.packetSnr());
 
-    digitalWrite(LORA_CS, HIGH);
     return;
 }
 
@@ -570,8 +565,6 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
     Serial.print("Tally ee: "); Serial.println(tally_ee);
     Serial.print("Tally ee init: "); Serial.println(tally_ee_init);
     */
-
-    digitalWrite(DISPLAY_CS, LOW);      //Select Display SPI Device
     
     sprintf(buf_tx, "%s", outgoing);
     sprintf(buf_rx, "%s", incoming);
@@ -600,182 +593,182 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
     buf_rssi_dd_int = atoi(buf_rssi_dd);
     buf_rssi_ee_int = atoi(buf_rssi_ee);
 
-    //u8g2.clearBuffer();					      // clear the internal memory
+    u8g2.clearBuffer();					      // clear the internal memory
 
     //TxD and RxD Indicator
-    //u8g2.setFont(u8g2_font_6x10_tf);
-    //u8g2.setDrawColor(1);
-    //u8g2.drawStr(0,26,"TxD:");
-    //u8g2.drawStr(30,26,buf_tx);
-    //u8g2.drawStr(115,26,buf_rxAdr);
-    //u8g2.drawStr(0,36,"RxD:");
-    //u8g2.drawStr(30,36,buf_rx);
-    //u8g2.drawStr(115,36,buf_txAdr);
+    u8g2.setFont(u8g2_font_6x10_tf);
+    u8g2.setDrawColor(1);
+    u8g2.drawStr(0,26,"TxD:");
+    u8g2.drawStr(30,26,buf_tx);
+    u8g2.drawStr(115,26,buf_rxAdr);
+    u8g2.drawStr(0,36,"RxD:");
+    u8g2.drawStr(30,36,buf_rx);
+    u8g2.drawStr(115,36,buf_txAdr);
     
     //Address Indicator
-    //u8g2.setFont(u8g2_font_6x13_tf);
-    //u8g2.setDrawColor(1);
-    //u8g2.drawXBM(20, 3, lineWidth, lineHeight, line1);
-    //u8g2.setDrawColor(1);
-    //u8g2.drawStr(3,12,buf_localAddress);
+    u8g2.setFont(u8g2_font_6x13_tf);
+    u8g2.setDrawColor(1);
+    u8g2.drawXBM(20, 3, lineWidth, lineHeight, line1);
+    u8g2.setDrawColor(1);
+    u8g2.drawStr(3,12,buf_localAddress);
 
     //Mode Indicator
-    //u8g2.setFont(u8g2_font_6x13_tf);
-    //u8g2.setDrawColor(1);
-    //u8g2.drawXBM(51, 3, lineWidth, lineHeight, line1);
-    //u8g2.setDrawColor(1);
-    //u8g2.drawStr(29,12,buf_mode);
+    u8g2.setFont(u8g2_font_6x13_tf);
+    u8g2.setDrawColor(1);
+    u8g2.drawXBM(51, 3, lineWidth, lineHeight, line1);
+    u8g2.setDrawColor(1);
+    u8g2.drawStr(29,12,buf_mode);
 
-    //u8g2.setFont(u8g2_font_6x13_tf);
-    //u8g2.setDrawColor(0);
+    u8g2.setFont(u8g2_font_6x13_tf);
+    u8g2.setDrawColor(0);
 
     //Power Mode Indicator
-    //u8g2.drawXBM(99, 0, batteryWidth, batteryHeight, battery0);
+    u8g2.drawXBM(99, 0, batteryWidth, batteryHeight, battery0);
 
     //Signal Strength Indicator bb
     if (((tally_bb == HIGH) || (tally_bb_init == HIGH)) && (buf_rssi_bb_int <= -80) && (tx_adr_bb == "bb") && ((incoming_bb == "off") || (incoming_bb == "con"))) {
-        //u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal1);
+        u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal1);
     }
     if (((tally_bb == HIGH) || (tally_bb_init == HIGH)) && (buf_rssi_bb_int <= -60 ) && (buf_rssi_bb_int >= -79) && (tx_adr_bb == "bb") && ((incoming_bb == "off") || (incoming_bb == "con"))) {
-        //u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal2);
+        u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal2);
     }
     if (((tally_bb == HIGH) || (tally_bb_init == HIGH)) && (buf_rssi_bb_int <= -40 ) && (buf_rssi_bb_int >= -59) && (tx_adr_bb == "bb") && ((incoming_bb == "off") || (incoming_bb == "con"))) {
-        //u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal3);
+        u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal3);
     }
     if (((tally_bb == HIGH) || (tally_bb_init == HIGH)) && (buf_rssi_bb_int <= -20 ) && (buf_rssi_bb_int >= -39) && (tx_adr_bb == "bb") && ((incoming_bb == "off") || (incoming_bb == "con"))) {
-        //u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal4);
+        u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal4);
     }
     if (((tally_bb == HIGH) || (tally_bb_init == HIGH)) && (buf_rssi_bb_int >= -19) && (tx_adr_bb == "bb") && ((incoming_bb == "off") || (incoming_bb == "con"))) {
-        //u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal5);
+        u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal5);
     }
 
     //Signal Strength Indicator cc
     if (((tally_cc == HIGH) || (tally_cc_init == HIGH)) && (buf_rssi_cc_int <= -80) && (tx_adr_cc == "cc") && ((incoming_cc == "off") || (incoming_cc == "con"))) {
-        //u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal1);
+        u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal1);
     }
     if (((tally_cc == HIGH) || (tally_cc_init == HIGH)) && (buf_rssi_cc_int <= -60 ) && (buf_rssi_cc_int >= -79) && (tx_adr_cc == "cc") && ((incoming_cc == "off") || (incoming_cc == "con"))) {
-        //u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal2);
+        u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal2);
     }
     if (((tally_cc == HIGH) || (tally_cc_init == HIGH)) && (buf_rssi_cc_int <= -40 ) && (buf_rssi_cc_int >= -59) && (tx_adr_cc == "cc") && ((incoming_cc == "off") || (incoming_cc == "con"))) {
-        //u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal3);
+        u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal3);
     }
     if (((tally_cc == HIGH) || (tally_cc_init == HIGH)) && (buf_rssi_cc_int <= -20 ) && (buf_rssi_cc_int >= -39) && (tx_adr_cc == "cc") && ((incoming_cc == "off") || (incoming_cc == "con"))) {
-        //u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal4);
+        u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal4);
     }
     if (((tally_cc == HIGH) || (tally_cc_init == HIGH)) && (buf_rssi_cc_int >= -19) && (tx_adr_cc == "cc") && ((incoming_cc == "off") || (incoming_cc == "con"))) {
-        //u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal5);
+        u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal5);
     }
 
     //Signal Strength Indicator dd
     if (((tally_dd == HIGH) || (tally_dd_init == HIGH)) && (buf_rssi_dd_int <= -80) && (tx_adr_dd == "dd") && ((incoming_dd == "off") || (incoming_dd == "con"))) {
-        //u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal1);
+        u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal1);
     }
     if (((tally_dd == HIGH) || (tally_dd_init == HIGH)) && (buf_rssi_dd_int <= -60 ) && (buf_rssi_dd_int >= -79) && (tx_adr_dd == "dd") && ((incoming_dd == "off") || (incoming_dd == "con"))) {
-        //u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal2);
+        u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal2);
     }
     if (((tally_dd == HIGH) || (tally_dd_init == HIGH)) && (buf_rssi_dd_int <= -40 ) && (buf_rssi_dd_int >= -59) && (tx_adr_dd == "dd") && ((incoming_dd == "off") || (incoming_dd == "con"))) {
-        //u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal3);
+        u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal3);
     }
     if (((tally_dd == HIGH) || (tally_dd_init == HIGH)) && (buf_rssi_dd_int <= -20 ) && (buf_rssi_dd_int >= -39) && (tx_adr_dd == "dd") && ((incoming_dd == "off") || (incoming_dd == "con"))) {
-        //u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal4);
+        u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal4);
     }
     if (((tally_dd == HIGH) || (tally_dd_init == HIGH)) && (buf_rssi_dd_int >= -19) && (tx_adr_dd == "dd") && ((incoming_dd == "off") || (incoming_dd == "con"))) {
-        //u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal5);
+        u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal5);
     }
 
     //Signal Strength Indicator ee
     if (((tally_ee == HIGH) || (tally_ee_init == HIGH)) && (buf_rssi_ee_int <= -80) && (tx_adr_ee == "ee") && ((incoming_ee == "off") || (incoming_ee == "con"))) {
-        //u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal1);
+        u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal1);
     }
     if (((tally_ee == HIGH) || (tally_ee_init == HIGH)) && (buf_rssi_ee_int <= -60 ) && (buf_rssi_ee_int >= -79) && (tx_adr_ee == "ee") && ((incoming_ee == "off") || (incoming_ee == "con"))) {
-        //u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal2);
+        u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal2);
     }
     if (((tally_ee == HIGH) || (tally_ee_init == HIGH)) && (buf_rssi_ee_int <= -40 ) && (buf_rssi_ee_int >= -59) && (tx_adr_ee == "ee") && ((incoming_ee == "off") || (incoming_ee == "con"))) {
-        //u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal3);
+        u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal3);
     }
     if (((tally_ee == HIGH) || (tally_ee_init == HIGH)) && (buf_rssi_ee_int <= -20 ) && (buf_rssi_ee_int >= -39) && (tx_adr_ee == "ee") && ((incoming_ee == "off") || (incoming_ee == "con"))) {
-        //u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal4);
+        u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal4);
     }
     if (((tally_ee == HIGH) || (tally_ee_init == HIGH)) && (buf_rssi_ee_int >= -19) && (tx_adr_ee == "ee") && ((incoming_ee == "off") || (incoming_ee == "con"))) {
-        //u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal5);
+        u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal5);
     }
 
     //Signal Lost Indicator bb
     if ((tally_bb == LOW) && (tally_bb_init == HIGH)) {
-        //u8g2.setDrawColor(1);
-        //u8g2.setFont(u8g2_font_6x10_tf);
-        //u8g2.drawStr(0,47,buf_rssi_bb);
-        //u8g2.drawStr(6,55,buf_bb);
-        //u8g2.setFont(u8g2_font_10x20_tf);
-        //u8g2.drawStr(19,47,buf_lost);
+        u8g2.setDrawColor(1);
+        u8g2.setFont(u8g2_font_6x10_tf);
+        u8g2.drawStr(0,47,buf_rssi_bb);
+        u8g2.drawStr(6,55,buf_bb);
+        u8g2.setFont(u8g2_font_10x20_tf);
+        u8g2.drawStr(19,47,buf_lost);
     }
 
     //Signal Lost Indicator cc
     if ((tally_cc == LOW) && (tally_cc_init == HIGH)) {
-        //u8g2.setDrawColor(1);
-        //u8g2.setFont(u8g2_font_6x10_tf);
-        //u8g2.drawStr(32,47,buf_rssi_cc);
-        //u8g2.drawStr(38,55,buf_cc);
-        //u8g2.setFont(u8g2_font_10x20_tf);
-        //u8g2.drawStr(51,47,buf_lost);
+        u8g2.setDrawColor(1);
+        u8g2.setFont(u8g2_font_6x10_tf);
+        u8g2.drawStr(32,47,buf_rssi_cc);
+        u8g2.drawStr(38,55,buf_cc);
+        u8g2.setFont(u8g2_font_10x20_tf);
+        u8g2.drawStr(51,47,buf_lost);
     }
 
     //Signal Lost Indicator dd
     if ((tally_dd == LOW) && (tally_dd_init == HIGH)) {
-        //u8g2.setDrawColor(1);
-        //u8g2.setFont(u8g2_font_6x10_tf);
-        //u8g2.drawStr(64,47,buf_rssi_dd);
-        //u8g2.drawStr(70,55,buf_dd);
-        //u8g2.setFont(u8g2_font_10x20_tf);
-        //u8g2.drawStr(83,47,buf_lost);
+        u8g2.setDrawColor(1);
+        u8g2.setFont(u8g2_font_6x10_tf);
+        u8g2.drawStr(64,47,buf_rssi_dd);
+        u8g2.drawStr(70,55,buf_dd);
+        u8g2.setFont(u8g2_font_10x20_tf);
+        u8g2.drawStr(83,47,buf_lost);
     }
 
     //Signal Lost Indicator ee
     if ((tally_ee == LOW) && (tally_ee_init == HIGH)) {
-        //u8g2.setDrawColor(1);
-        //u8g2.setFont(u8g2_font_6x10_tf);
-        //u8g2.drawStr(96,47,buf_rssi_ee);
-        //u8g2.drawStr(102,55,buf_ee);
-        //u8g2.setFont(u8g2_font_10x20_tf);
-        //u8g2.drawStr(115,47,buf_lost);
+        u8g2.setDrawColor(1);
+        u8g2.setFont(u8g2_font_6x10_tf);
+        u8g2.drawStr(96,47,buf_rssi_ee);
+        u8g2.drawStr(102,55,buf_ee);
+        u8g2.setFont(u8g2_font_10x20_tf);
+        u8g2.drawStr(115,47,buf_lost);
     }
 
     //Signal High Indicator bb
     if ((tally_bb == HIGH) && (tally_bb_init == HIGH)) {
-        //u8g2.setDrawColor(1);
-        //u8g2.setFont(u8g2_font_6x10_tf);
-        //u8g2.drawStr(0,47,buf_rssi_bb);
-        //u8g2.drawStr(6,55,buf_bb);
+        u8g2.setDrawColor(1);
+        u8g2.setFont(u8g2_font_6x10_tf);
+        u8g2.drawStr(0,47,buf_rssi_bb);
+        u8g2.drawStr(6,55,buf_bb);
     }
 
     //Signal High Indicator cc
     if ((tally_cc == HIGH) && (tally_cc_init == HIGH)) {
-        //u8g2.setDrawColor(1);
-        //u8g2.setFont(u8g2_font_6x10_tf);
-        //u8g2.drawStr(32,47,buf_rssi_cc);
-        //u8g2.drawStr(38,55,buf_cc);
+        u8g2.setDrawColor(1);
+        u8g2.setFont(u8g2_font_6x10_tf);
+        u8g2.drawStr(32,47,buf_rssi_cc);
+        u8g2.drawStr(38,55,buf_cc);
     }
 
     //Signal High Indicator dd
     if ((tally_dd == HIGH) && (tally_dd_init == HIGH)) {
-        //u8g2.setDrawColor(1);
-        //u8g2.setFont(u8g2_font_6x10_tf);
-        //u8g2.drawStr(64,47,buf_rssi_dd);
-        //u8g2.drawStr(70,55,buf_dd);
+        u8g2.setDrawColor(1);
+        u8g2.setFont(u8g2_font_6x10_tf);
+        u8g2.drawStr(64,47,buf_rssi_dd);
+        u8g2.drawStr(70,55,buf_dd);
     }
 
     //Signal High Indicator ee
     if ((tally_ee == HIGH) && (tally_ee_init == HIGH)) {
-        //u8g2.setDrawColor(1);
-        //u8g2.setFont(u8g2_font_6x10_tf);
-        //u8g2.drawStr(96,47,buf_rssi_ee);
-        //u8g2.drawStr(102,55,buf_ee);
+        u8g2.setDrawColor(1);
+        u8g2.setFont(u8g2_font_6x10_tf);
+        u8g2.drawStr(96,47,buf_rssi_ee);
+        u8g2.drawStr(102,55,buf_ee);
     }
 
-    //u8g2.sendBuffer();
+    u8g2.sendBuffer();
 
     lastDisplayPrint = millis();
-    digitalWrite(DISPLAY_CS, HIGH);
+
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -829,14 +822,15 @@ void setup() {
     Serial.println(name);
     Serial.println("Version: " + version);
 
+    pinMode(gpioP1, INPUT_PULLDOWN);
+    pinMode(gpioP2, INPUT_PULLDOWN);
+    pinMode(gpioP3, INPUT_PULLDOWN);
+    pinMode(gpioP4, INPUT_PULLDOWN);
+
     pinMode(DISPLAY_CS, OUTPUT);                                //CS Display
     pinMode(LORA_CS, OUTPUT);                                   //CS LORA
-    pinMode(SD_CS, OUTPUT);                                     //CS SD-Reader
-    pinMode(SD_MISO, INPUT_PULLUP);
 
-    digitalWrite(LORA_CS, HIGH);
-    digitalWrite(DISPLAY_CS, HIGH);
-    digitalWrite(SD_CS, LOW);
+    pinMode(SD_MISO, INPUT_PULLUP);
 
 //////////////////////////////////////////////////////////////////////
 
@@ -854,8 +848,9 @@ void setup() {
 
 //////////////////////////////////////////////////////////////////////
 
-    SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);                      
+    SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI);                      
 
+    /*
     while (true) {
             if (SD.begin(SD_CS)) {
                 Serial.println("SDCard init succeeded.");
@@ -866,19 +861,19 @@ void setup() {
             delay(300);
             break;
         }
+    */
 
     digitalWrite(LORA_CS, HIGH);
     digitalWrite(DISPLAY_CS, LOW);
-    digitalWrite(SD_CS, HIGH);         //Select Display SPI Device
 
-//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////  
 
-    //u8g2.setBusClock(1000000);
-    //u8g2.begin();
-    //u8g2.clearBuffer();
-    //u8g2.setFont(u8g2_font_6x10_tf);
-    //u8g2.setContrast(defaultBrightnessDisplay);                  
-    //u8g2.setFlipMode(1);
+    u8g2.setBusClock(1000000);
+    u8g2.begin();
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_6x10_tf);
+    u8g2.setContrast(defaultBrightnessDisplay);                  
+    u8g2.setFlipMode(0);
 
     //        Color, Delay, Runs
     printLogo(0, 50);
@@ -889,21 +884,33 @@ void setup() {
     printLoad(1, 60, 4);
 
     sprintf(buf_version, "%s", version);
-    //u8g2.drawStr(99,60,buf_version);
-    //u8g2.sendBuffer();
+    u8g2.drawStr(99,60,buf_version);
+    u8g2.sendBuffer();
 
     Serial.println("OLED init succeeded.");
     oledInit = "OLED init";
     sprintf(buf_oledInit, "%s", oledInit);
-    //u8g2.drawStr(0,15,buf_oledInit);
-    //u8g2.sendBuffer();
+    u8g2.drawStr(0,15,buf_oledInit);
+    u8g2.sendBuffer();
     delay(300);
 
-    digitalWrite(LORA_CS, LOW);
-    digitalWrite(DISPLAY_CS, HIGH);
-    digitalWrite(SD_CS, HIGH);                                        //Select Display SPI Device 
+    Serial.println("LORA init succeeded.");
+    loraInit = "LORA init";
+    sprintf(buf_loraInit, "%s", loraInit);   
+    u8g2.drawStr(0,35,buf_loraInit);
+    u8g2.sendBuffer();
+    delay(300);
 
-//////////////////////////////////////////////////////////////////////  
+    printLora(1);
+    delay(2500);
+
+    emptyDisplay();
+    printDisplay();
+
+    digitalWrite(DISPLAY_CS, HIGH);
+    digitalWrite(LORA_CS, LOW);
+
+    //////////////////////////////////////////////////////////////////////  
 
     LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
     LoRa.setTxPower(loraTxPower);
@@ -917,49 +924,16 @@ void setup() {
         Serial.println("LORA init failed. Check your connections.");
         loraInit = "LORA failed";
         digitalWrite(LORA_CS, HIGH);
-        digitalWrite(DISPLAY_CS, LOW);
-        digitalWrite(SD_CS, HIGH);                                  //Select Display SPI Device    
+        digitalWrite(DISPLAY_CS, LOW);  
         sprintf(buf_loraInit, "%s", loraInit);   
-        //u8g2.drawStr(0,35,buf_loraInit);
-        //u8g2.sendBuffer();
+        u8g2.drawStr(0,35,buf_loraInit);
+        u8g2.sendBuffer();
         digitalWrite(DISPLAY_CS, HIGH);     
         while (true);                                               // if failed, do nothing
     }
 
     digitalWrite(LORA_CS, HIGH);
-    digitalWrite(DISPLAY_CS, LOW);
-    digitalWrite(SD_CS, HIGH);                                       //Select Display SPI Device   
-
-//////////////////////////////////////////////////////////////////////
-
-    Serial.println("LORA init succeeded.");
-    loraInit = "LORA init";
-    sprintf(buf_loraInit, "%s", loraInit);   
-    //u8g2.drawStr(0,35,buf_loraInit);
-    //u8g2.sendBuffer();
-    delay(300);
-
-    pinMode(gpioP1, INPUT_PULLDOWN);
-    pinMode(gpioP2, INPUT_PULLDOWN);
-    pinMode(gpioP3, INPUT_PULLDOWN);
-    pinMode(gpioP4, INPUT_PULLDOWN);
-
-    Serial.println("Outputs init succeeded.");
-    outputInit = "Outputs init";
-    sprintf(buf_outputInit, "%s", outputInit);   
-    //u8g2.drawStr(0,45,buf_outputInit);
-    //u8g2.sendBuffer();
-    delay(500);
-
-    printLora(1);
-    delay(2500);
-
-    emptyDisplay();
-    printDisplay();
-
-    digitalWrite(LORA_CS, HIGH);
     digitalWrite(DISPLAY_CS, HIGH);
-    digitalWrite(SD_CS, HIGH);         //Select Display SPI Device   
 
 //////////////////////////////////////////////////////////////////////
 
@@ -1119,8 +1093,12 @@ void loop() {
         destination = 0xff;
         string_destinationAddress = "ff";
         outgoing = "dis-anyrec?";         // Send a message
+        digitalWrite(LORA_CS, LOW);
         sendMessage(outgoing);
+        digitalWrite(LORA_CS, HIGH);
+        digitalWrite(DISPLAY_CS, HIGH);
         printDisplay();
+        digitalWrite(DISPLAY_CS, LOW);
         Serial.println("LORA TxD: " + outgoing);
         lastOfferTime = millis();
         lastOfferTimeRef = millis();
@@ -1131,6 +1109,7 @@ void loop() {
         mode = "offer";
         mode_s = "off";
         emptyDisplay();
+        digitalWrite(LORA_CS, LOW);
     }
 
     // Offer Mode
@@ -1146,7 +1125,10 @@ void loop() {
             rssi_bb = rssi;
             bL_bb = bL;
             counterTallys++;
+            digitalWrite(LORA_CS, HIGH);
+            digitalWrite(DISPLAY_CS, LOW);
             printDisplay();
+            digitalWrite(DISPLAY_CS, HIGH);
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1160,7 +1142,10 @@ void loop() {
             rssi_cc = rssi;
             bL_cc = bL;
             counterTallys++;
+            digitalWrite(LORA_CS, HIGH);
+            digitalWrite(DISPLAY_CS, LOW);
             printDisplay();
+            digitalWrite(DISPLAY_CS, HIGH);
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1174,7 +1159,10 @@ void loop() {
             rssi_dd = rssi;
             bL_dd = bL;
             counterTallys++;
+            digitalWrite(LORA_CS, HIGH);
+            digitalWrite(DISPLAY_CS, LOW);
             printDisplay();
+            digitalWrite(DISPLAY_CS, HIGH);
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1188,7 +1176,10 @@ void loop() {
             rssi_ee = rssi;
             bL_ee = bL;
             counterTallys++;
+            digitalWrite(LORA_CS, HIGH);
+            digitalWrite(DISPLAY_CS, LOW);
             printDisplay();
+            digitalWrite(DISPLAY_CS, HIGH);
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
