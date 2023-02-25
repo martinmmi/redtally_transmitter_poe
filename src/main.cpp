@@ -41,9 +41,6 @@ String bL_bb, bL_cc, bL_dd, bL_ee;
 String html_state_bb, html_state_cc, html_state_dd, html_state_ee;
 String html_state_dhcp, html_state_dns, html_state_esm;
 
-String oledInit;
-String loraInit;
-
 char buf_tx[12];
 char buf_rx[12];
 char buf_bb[3];
@@ -56,8 +53,6 @@ char buf_localAddress[5];
 char buf_mode[4];
 char buf_rxAdr[5];
 char buf_txAdr[5];
-char buf_oledInit[12];
-char buf_loraInit[12];
 char buf_rssi_bb[4];
 char buf_rssi_cc[4];
 char buf_rssi_dd[4];
@@ -144,7 +139,8 @@ bool batteryAttentionState = LOW;
 bool ethConnected = false;
 bool useSTATIC = false;
 bool useDNS = false;
-bool bool_esm = false; 
+bool bool_esm = false;
+bool accessSPI_LORA = false; 
 
 ///////////////////////////////////////////////
 /////////// Setup Network Values //////////////
@@ -447,7 +443,82 @@ void printLora(int color) {
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
+void startSPI_SD() {
+
+    SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);     
+    digitalWrite(SD_CS, LOW);
+
+}
+
+void closeSPI_SD() {
+
+    digitalWrite(SD_CS, HIGH);
+    SPI.end();
+
+}
+
+//////////////////////////////////////////////////////////////////////
+
+void startSPI_LORA() {
+
+    if(accessSPI_LORA == false) {
+        SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI);     
+        digitalWrite(LORA_CS, LOW);
+
+        
+        LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
+        LoRa.setTxPower(loraTxPower);
+        LoRa.setSpreadingFactor(loraSpreadingFactor);    
+        LoRa.setSignalBandwidth(loraSignalBandwidth);
+        LoRa.setCodingRate4(loraCodingRate);
+        LoRa.setPreambleLength(loraPreambleLength);
+        LoRa.begin(loraFrequenz);
+        
+
+        accessSPI_LORA == true;
+    }   
+}
+
+void closeSPI_LORA() {
+
+    if(accessSPI_LORA == true) {
+        digitalWrite(LORA_CS, HIGH);
+        SPI.end();
+
+        //accessSPI_LORA == false;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////
+
+void startSPI_DISPLAY() {
+
+    SPI.begin(DISPLAY_SCLK, DISPLAY_MISO, DISPLAY_MOSI);     
+    digitalWrite(DISPLAY_CS, LOW);
+
+    u8g2.begin();
+    /*
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_6x10_tf);
+    u8g2.setContrast(defaultBrightnessDisplay);                  
+    u8g2.setFlipMode(0);
+    */
+
+}
+
+void closeSPI_DISPLAY() {
+
+    digitalWrite(DISPLAY_CS, HIGH);
+    SPI.end();
+
+}
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
 void sendMessage(String message) {
+    startSPI_LORA();
     LoRa.beginPacket();                   // start packet
     LoRa.write(destination);              // add destination address
     LoRa.write(localAddress);             // add sender address
@@ -459,6 +530,7 @@ void sendMessage(String message) {
     LoRa.print(message);                  // add payload
     LoRa.endPacket();                     // finish packet and send it
     msgCount++;                           // increment message ID
+    closeSPI_LORA();
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -466,7 +538,7 @@ void sendMessage(String message) {
 //////////////////////////////////////////////////////////////////////
 
 void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *ptr_incoming, String *ptr_rssi, String *ptr_bL, String *ptr_snr) { 
-     
+    startSPI_LORA();
     if (packetSize == 0) return;          // if there's no packet, return
 
     //Clear the variables
@@ -524,6 +596,7 @@ void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *p
     *ptr_bL = String(byte_bL);
     *ptr_snr = String(LoRa.packetSnr());
 
+    closeSPI_LORA();
     return;
 }
 
@@ -565,6 +638,8 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
     Serial.print("Tally ee: "); Serial.println(tally_ee);
     Serial.print("Tally ee init: "); Serial.println(tally_ee_init);
     */
+
+    startSPI_DISPLAY();
     
     sprintf(buf_tx, "%s", outgoing);
     sprintf(buf_rx, "%s", incoming);
@@ -769,6 +844,8 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
 
     lastDisplayPrint = millis();
 
+    closeSPI_DISPLAY();
+
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -827,8 +904,13 @@ void setup() {
     pinMode(gpioP3, INPUT_PULLDOWN);
     pinMode(gpioP4, INPUT_PULLDOWN);
 
-    pinMode(DISPLAY_CS, OUTPUT);                                //CS Display
+    pinMode(SD_CS, OUTPUT);                                     //CS SD
     pinMode(LORA_CS, OUTPUT);                                   //CS LORA
+    pinMode(DISPLAY_CS, OUTPUT);                                //CS Display
+
+    digitalWrite(SD_CS, HIGH);
+    digitalWrite(LORA_CS, HIGH);
+    digitalWrite(DISPLAY_CS, HIGH);
 
     pinMode(SD_MISO, INPUT_PULLUP);
 
@@ -837,8 +919,8 @@ void setup() {
     eeprom.begin("network", false);                //false mean use read/write mode
     useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
     useDNS = eeprom.getBool("dns", false);
-    Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
-    Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
+    //Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
+    //Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
     eeprom.end();
 
     eeprom.begin("configuration", false);         
@@ -848,27 +930,49 @@ void setup() {
 
 //////////////////////////////////////////////////////////////////////
 
-    SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI);                      
+    SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);     
+    digitalWrite(SD_CS, LOW);
 
-    /*
-    while (true) {
-            if (SD.begin(SD_CS)) {
-                Serial.println("SDCard init succeeded.");
-                delay(300);
-                break;
-            }
-            Serial.println("SDCard init failed. Check your connections.");
-            delay(300);
-            break;
-        }
-    */
+    if (!SD.begin(SD_CS)) {                                                 // initialize sd card
+        Serial.println("SD-Card init failed. Check your connections.");    
+        //while (true);                                                       // if failed, do nothing
+    }
+    if (SD.begin(SD_CS)) {    
+        Serial.println("SD-Card init succeeded."); 
+    }
+
+    digitalWrite(SD_CS, HIGH);
+    SPI.end();
+    
+//////////////////////////////////////////////////////////////////////
+
+    SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI);     
+    digitalWrite(LORA_CS, LOW);
+
+    LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
+    LoRa.setTxPower(loraTxPower);
+    LoRa.setSpreadingFactor(loraSpreadingFactor);    
+    LoRa.setSignalBandwidth(loraSignalBandwidth);
+    LoRa.setCodingRate4(loraCodingRate);
+    LoRa.setPreambleLength(loraPreambleLength);
+    LoRa.begin(loraFrequenz);
+
+    if (!LoRa.begin(loraFrequenz)) {                                        // initialize lora frequenz
+        Serial.println("LORA init failed. Check your connections.");    
+        while (true);                                                       // if failed, do nothing
+    }
+    if (LoRa.begin(loraFrequenz)) {    
+        Serial.println("LORA init succeeded.");
+    }
 
     digitalWrite(LORA_CS, HIGH);
-    digitalWrite(DISPLAY_CS, LOW);
+    SPI.end();
 
 //////////////////////////////////////////////////////////////////////  
 
-    u8g2.setBusClock(1000000);
+    SPI.begin(DISPLAY_SCLK, DISPLAY_MISO, DISPLAY_MOSI);     
+    digitalWrite(DISPLAY_CS, LOW);
+
     u8g2.begin();
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_6x10_tf);
@@ -882,25 +986,7 @@ void setup() {
     printLogo(0, 25);
     delay(500);
     printLoad(1, 60, 4);
-
-    sprintf(buf_version, "%s", version);
-    u8g2.drawStr(99,60,buf_version);
-    u8g2.sendBuffer();
-
-    Serial.println("OLED init succeeded.");
-    oledInit = "OLED init";
-    sprintf(buf_oledInit, "%s", oledInit);
-    u8g2.drawStr(0,15,buf_oledInit);
-    u8g2.sendBuffer();
-    delay(300);
-
-    Serial.println("LORA init succeeded.");
-    loraInit = "LORA init";
-    sprintf(buf_loraInit, "%s", loraInit);   
-    u8g2.drawStr(0,35,buf_loraInit);
-    u8g2.sendBuffer();
-    delay(300);
-
+    delay(500);
     printLora(1);
     delay(2500);
 
@@ -908,38 +994,13 @@ void setup() {
     printDisplay();
 
     digitalWrite(DISPLAY_CS, HIGH);
-    digitalWrite(LORA_CS, LOW);
+    SPI.end();
 
-    //////////////////////////////////////////////////////////////////////  
-
-    LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
-    LoRa.setTxPower(loraTxPower);
-    LoRa.setSpreadingFactor(loraSpreadingFactor);    
-    LoRa.setSignalBandwidth(loraSignalBandwidth);
-    LoRa.setCodingRate4(loraCodingRate);
-    LoRa.setPreambleLength(loraPreambleLength);
-    LoRa.begin(loraFrequenz);
-
-    if (!LoRa.begin(loraFrequenz)) {                                 // initialize lora frequenz
-        Serial.println("LORA init failed. Check your connections.");
-        loraInit = "LORA failed";
-        digitalWrite(LORA_CS, HIGH);
-        digitalWrite(DISPLAY_CS, LOW);  
-        sprintf(buf_loraInit, "%s", loraInit);   
-        u8g2.drawStr(0,35,buf_loraInit);
-        u8g2.sendBuffer();
-        digitalWrite(DISPLAY_CS, HIGH);     
-        while (true);                                               // if failed, do nothing
-    }
-
-    digitalWrite(LORA_CS, HIGH);
-    digitalWrite(DISPLAY_CS, HIGH);
-
-//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////  
 
     if(!SPIFFS.begin(true)){
         Serial.println("SPIFFS init failed. An Error has occurred while mounting SPIFFS");
-        return;
+        while (true);
     }
     Serial.println("SPIFFS init succeeded.");
 
@@ -1093,12 +1154,8 @@ void loop() {
         destination = 0xff;
         string_destinationAddress = "ff";
         outgoing = "dis-anyrec?";         // Send a message
-        digitalWrite(LORA_CS, LOW);
         sendMessage(outgoing);
-        digitalWrite(LORA_CS, HIGH);
-        digitalWrite(DISPLAY_CS, HIGH);
         printDisplay();
-        digitalWrite(DISPLAY_CS, LOW);
         Serial.println("LORA TxD: " + outgoing);
         lastOfferTime = millis();
         lastOfferTimeRef = millis();
@@ -1109,7 +1166,6 @@ void loop() {
         mode = "offer";
         mode_s = "off";
         emptyDisplay();
-        digitalWrite(LORA_CS, LOW);
     }
 
     // Offer Mode
@@ -1125,10 +1181,7 @@ void loop() {
             rssi_bb = rssi;
             bL_bb = bL;
             counterTallys++;
-            digitalWrite(LORA_CS, HIGH);
-            digitalWrite(DISPLAY_CS, LOW);
             printDisplay();
-            digitalWrite(DISPLAY_CS, HIGH);
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1142,10 +1195,7 @@ void loop() {
             rssi_cc = rssi;
             bL_cc = bL;
             counterTallys++;
-            digitalWrite(LORA_CS, HIGH);
-            digitalWrite(DISPLAY_CS, LOW);
             printDisplay();
-            digitalWrite(DISPLAY_CS, HIGH);
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1159,10 +1209,7 @@ void loop() {
             rssi_dd = rssi;
             bL_dd = bL;
             counterTallys++;
-            digitalWrite(LORA_CS, HIGH);
-            digitalWrite(DISPLAY_CS, LOW);
             printDisplay();
-            digitalWrite(DISPLAY_CS, HIGH);
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1176,10 +1223,7 @@ void loop() {
             rssi_ee = rssi;
             bL_ee = bL;
             counterTallys++;
-            digitalWrite(LORA_CS, HIGH);
-            digitalWrite(DISPLAY_CS, LOW);
             printDisplay();
-            digitalWrite(DISPLAY_CS, HIGH);
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
