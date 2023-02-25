@@ -140,7 +140,6 @@ bool ethConnected = false;
 bool useSTATIC = false;
 bool useDNS = false;
 bool bool_esm = false;
-bool accessSPI_LORA = false; 
 
 ///////////////////////////////////////////////
 /////////// Setup Network Values //////////////
@@ -445,7 +444,8 @@ void printLora(int color) {
 
 void startSPI_SD() {
 
-    SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);     
+    SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);
+    //SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));         
     digitalWrite(SD_CS, LOW);
 
 }
@@ -454,6 +454,7 @@ void closeSPI_SD() {
 
     digitalWrite(SD_CS, HIGH);
     SPI.end();
+    //SPI.endTransaction();
 
 }
 
@@ -461,48 +462,41 @@ void closeSPI_SD() {
 
 void startSPI_LORA() {
 
-    if(accessSPI_LORA == false) {
-        SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI);     
-        digitalWrite(LORA_CS, LOW);
+    SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI);   
+    //SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));      
+    digitalWrite(LORA_CS, LOW);
 
-        
-        LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
-        LoRa.setTxPower(loraTxPower);
-        LoRa.setSpreadingFactor(loraSpreadingFactor);    
-        LoRa.setSignalBandwidth(loraSignalBandwidth);
-        LoRa.setCodingRate4(loraCodingRate);
-        LoRa.setPreambleLength(loraPreambleLength);
-        LoRa.begin(loraFrequenz);
-        
+    LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
+    LoRa.setTxPower(loraTxPower);
+    LoRa.setSpreadingFactor(loraSpreadingFactor);    
+    LoRa.setSignalBandwidth(loraSignalBandwidth);
+    LoRa.setCodingRate4(loraCodingRate);
+    LoRa.setPreambleLength(loraPreambleLength);
+    LoRa.begin(loraFrequenz);
 
-        accessSPI_LORA == true;
-    }   
 }
 
 void closeSPI_LORA() {
 
-    if(accessSPI_LORA == true) {
-        digitalWrite(LORA_CS, HIGH);
-        SPI.end();
+    digitalWrite(LORA_CS, HIGH);
+    SPI.end();
+    //SPI.endTransaction();
 
-        //accessSPI_LORA == false;
-    }
 }
 
 //////////////////////////////////////////////////////////////////////
 
 void startSPI_DISPLAY() {
 
-    SPI.begin(DISPLAY_SCLK, DISPLAY_MISO, DISPLAY_MOSI);     
+    SPI.begin(DISPLAY_SCLK, DISPLAY_MISO, DISPLAY_MOSI); 
+    //SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));    
     digitalWrite(DISPLAY_CS, LOW);
 
     u8g2.begin();
-    /*
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_6x10_tf);
     u8g2.setContrast(defaultBrightnessDisplay);                  
     u8g2.setFlipMode(0);
-    */
 
 }
 
@@ -510,6 +504,7 @@ void closeSPI_DISPLAY() {
 
     digitalWrite(DISPLAY_CS, HIGH);
     SPI.end();
+    //SPI.endTransaction();
 
 }
 
@@ -518,7 +513,6 @@ void closeSPI_DISPLAY() {
 //////////////////////////////////////////////////////////////////////
 
 void sendMessage(String message) {
-    startSPI_LORA();
     LoRa.beginPacket();                   // start packet
     LoRa.write(destination);              // add destination address
     LoRa.write(localAddress);             // add sender address
@@ -530,7 +524,6 @@ void sendMessage(String message) {
     LoRa.print(message);                  // add payload
     LoRa.endPacket();                     // finish packet and send it
     msgCount++;                           // increment message ID
-    closeSPI_LORA();
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -538,7 +531,6 @@ void sendMessage(String message) {
 //////////////////////////////////////////////////////////////////////
 
 void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *ptr_incoming, String *ptr_rssi, String *ptr_bL, String *ptr_snr) { 
-    startSPI_LORA();
     if (packetSize == 0) return;          // if there's no packet, return
 
     //Clear the variables
@@ -596,7 +588,6 @@ void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *p
     *ptr_bL = String(byte_bL);
     *ptr_snr = String(LoRa.packetSnr());
 
-    closeSPI_LORA();
     return;
 }
 
@@ -639,8 +630,6 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
     Serial.print("Tally ee init: "); Serial.println(tally_ee_init);
     */
 
-    startSPI_DISPLAY();
-    
     sprintf(buf_tx, "%s", outgoing);
     sprintf(buf_rx, "%s", incoming);
 
@@ -844,8 +833,6 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
 
     lastDisplayPrint = millis();
 
-    closeSPI_DISPLAY();
-
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -931,6 +918,7 @@ void setup() {
 //////////////////////////////////////////////////////////////////////
 
     SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);     
+    //SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));    
     digitalWrite(SD_CS, LOW);
 
     if (!SD.begin(SD_CS)) {                                                 // initialize sd card
@@ -943,10 +931,13 @@ void setup() {
 
     digitalWrite(SD_CS, HIGH);
     SPI.end();
+    //SPI.endTransaction();
+
     
 //////////////////////////////////////////////////////////////////////
 
     SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI);     
+    //SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));    
     digitalWrite(LORA_CS, LOW);
 
     LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
@@ -966,12 +957,14 @@ void setup() {
     }
 
     digitalWrite(LORA_CS, HIGH);
-    SPI.end();
+    SPI.end();  
+    //SPI.endTransaction();
 
-//////////////////////////////////////////////////////////////////////  
+//////////////////////////////////////////////////////////////////////
 
     SPI.begin(DISPLAY_SCLK, DISPLAY_MISO, DISPLAY_MOSI);     
-    digitalWrite(DISPLAY_CS, LOW);
+    //SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));    
+    digitalWrite(DISPLAY_CS, LOW); 
 
     u8g2.begin();
     u8g2.clearBuffer();
@@ -982,10 +975,10 @@ void setup() {
     //        Color, Delay, Runs
     printLogo(0, 50);
     delay(1000);
-    printLoad(1, 60, 2);
+    printLoad(1, 80, 2);
     printLogo(0, 25);
     delay(500);
-    printLoad(1, 60, 4);
+    printLoad(1, 80, 4);
     delay(500);
     printLora(1);
     delay(2500);
@@ -995,6 +988,7 @@ void setup() {
 
     digitalWrite(DISPLAY_CS, HIGH);
     SPI.end();
+    //SPI.endTransaction();
 
 //////////////////////////////////////////////////////////////////////  
 
@@ -1141,6 +1135,8 @@ void setup() {
     server.begin();
     Serial.println("HTTP server started.");
 
+    startSPI_LORA();
+
     }
 
 //////////////////////////////////////////////////////////////////////
@@ -1155,7 +1151,7 @@ void loop() {
         string_destinationAddress = "ff";
         outgoing = "dis-anyrec?";         // Send a message
         sendMessage(outgoing);
-        printDisplay();
+        //printDisplay();
         Serial.println("LORA TxD: " + outgoing);
         lastOfferTime = millis();
         lastOfferTimeRef = millis();
@@ -1181,7 +1177,7 @@ void loop() {
             rssi_bb = rssi;
             bL_bb = bL;
             counterTallys++;
-            printDisplay();
+            //printDisplay();();
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1195,7 +1191,7 @@ void loop() {
             rssi_cc = rssi;
             bL_cc = bL;
             counterTallys++;
-            printDisplay();
+            //printDisplay();
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1209,7 +1205,7 @@ void loop() {
             rssi_dd = rssi;
             bL_dd = bL;
             counterTallys++;
-            printDisplay();
+            //printDisplay();
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1223,7 +1219,7 @@ void loop() {
             rssi_ee = rssi;
             bL_ee = bL;
             counterTallys++;
-            printDisplay();
+            //printDisplay();
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1231,7 +1227,7 @@ void loop() {
 
         if ((millis() - lastOfferTimeRef > 2500)) {      // every 2.5 s clear display
             emptyDisplay();
-            printDisplay();
+            //printDisplay();
             lastOfferTimeRef = millis();
         }
 
@@ -1269,7 +1265,7 @@ void loop() {
             string_destinationAddress = "bb";
             outgoing = "req-high";         // Send a message
             sendMessage(outgoing);
-            printDisplay();
+            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC1 = !gpioC1;
             mode = "acknowledge";
@@ -1283,7 +1279,7 @@ void loop() {
             string_destinationAddress = "bb";
             outgoing = "req-low";         // Send a message
             sendMessage(outgoing);
-            printDisplay();
+            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC1 = !gpioC1;
             mode = "acknowledge";
@@ -1297,7 +1293,7 @@ void loop() {
             string_destinationAddress = "cc";
             outgoing = "req-high";         // Send a message
             sendMessage(outgoing);
-            printDisplay();
+            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC2 = !gpioC2;
             mode = "acknowledge";
@@ -1311,7 +1307,7 @@ void loop() {
             string_destinationAddress = "cc";
             outgoing = "req-low";         // Send a message
             sendMessage(outgoing);
-            printDisplay();
+            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC2 = !gpioC2;
             mode = "acknowledge";
@@ -1325,7 +1321,7 @@ void loop() {
             string_destinationAddress = "dd";
             outgoing = "req-high";         // Send a message
             sendMessage(outgoing);
-            printDisplay();
+            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC3 = !gpioC3;
             mode = "acknowledge";
@@ -1339,7 +1335,7 @@ void loop() {
             string_destinationAddress = "dd";
             outgoing = "req-low";         // Send a message
             sendMessage(outgoing);
-            printDisplay();
+            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC3 = !gpioC3;
             mode = "acknowledge";
@@ -1353,7 +1349,7 @@ void loop() {
             string_destinationAddress = "ee";
             outgoing = "req-high";         // Send a message
             sendMessage(outgoing);
-            printDisplay();
+            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC4 = !gpioC4;
             mode = "acknowledge";
@@ -1367,7 +1363,7 @@ void loop() {
             string_destinationAddress = "ee";
             outgoing = "req-low";         // Send a message
             sendMessage(outgoing);
-            printDisplay();
+            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC4 = !gpioC4;
             mode = "acknowledge";
@@ -1385,7 +1381,7 @@ void loop() {
         // Back to Request Mode
         if ((incoming == "ack") && ((tx_adr == "bb") || (tx_adr == "cc") || (tx_adr == "dd") ||  (tx_adr == "ee"))) {
             Serial.println("LORA RxD: " + incoming);
-            printDisplay();
+            //printDisplay();
             mode = "request";
             mode_s = "req";
             emptyDisplay();
@@ -1398,7 +1394,7 @@ void loop() {
         mode = "request";
         mode_s = "req";
         counterSend++;
-        printDisplay();
+        //printDisplay();
         gpioC1 = !gpioC1;
         gpioC2 = !gpioC2;
         gpioC3 = !gpioC3;
@@ -1412,7 +1408,7 @@ void loop() {
         mode = "request";
         mode_s = "req";
         counterSend = 0;
-        printDisplay();
+        //printDisplay();
         break;
     }
     }
@@ -1423,7 +1419,7 @@ void loop() {
         string_destinationAddress = "bb";
         outgoing = "con-rec?";         // Send a message
         sendMessage(outgoing);
-        printDisplay();
+        //printDisplay();
         Serial.println("LORA TxD: " + outgoing);
         lastDiscoverTimebb = millis();
         lastControlTime = millis();
@@ -1446,7 +1442,7 @@ void loop() {
             rssi_bb = rssi;
             bL_bb = bL;
             missed_bb = 0;
-            printDisplay();
+            //printDisplay();
             mode = "request";
             mode_s = "req";
             emptyDisplay();
@@ -1460,7 +1456,7 @@ void loop() {
                 tally_bb = LOW;
                 counterTallys--;
             }
-            printDisplay();
+            //printDisplay();
             mode = "request"; 
             mode_s = "req";
             emptyDisplay();
@@ -1475,7 +1471,7 @@ void loop() {
         string_destinationAddress = "cc";
         outgoing = "con-rec?";         // Send a message
         sendMessage(outgoing);
-        printDisplay();
+        //printDisplay();
         Serial.println("LORA TxD: " + outgoing);
         lastDiscoverTimecc = millis();
         lastControlTime = millis();
@@ -1498,7 +1494,7 @@ void loop() {
                 rssi_cc = rssi;
                 bL_cc = bL;
                 missed_cc = 0;
-                printDisplay();
+                //printDisplay();
                 mode = "request";
                 mode_s = "req";
                 emptyDisplay();
@@ -1512,7 +1508,7 @@ void loop() {
                 tally_cc = LOW;
                 counterTallys--;
                 }
-                printDisplay();
+                //printDisplay();
                 mode = "request"; 
                 mode_s = "req";
                 emptyDisplay();
@@ -1527,7 +1523,7 @@ void loop() {
         string_destinationAddress = "dd";
         outgoing = "con-rec?";         // Send a message
         sendMessage(outgoing);
-        printDisplay();
+        //printDisplay();
         Serial.println("LORA TxD: " + outgoing);
         lastDiscoverTimedd = millis();
         lastControlTime = millis();
@@ -1550,7 +1546,7 @@ void loop() {
                 rssi_dd = rssi;
                 bL_dd = bL;
                 missed_dd = 0;
-                printDisplay();
+                //printDisplay();
                 mode = "request";
                 mode_s = "req";
                 emptyDisplay();
@@ -1564,7 +1560,7 @@ void loop() {
                 tally_dd = LOW;
                 counterTallys--;
                 }
-                printDisplay();
+                //printDisplay();
                 mode = "request"; 
                 mode_s = "req";
                 emptyDisplay();
@@ -1579,7 +1575,7 @@ void loop() {
         string_destinationAddress = "ee";
         outgoing = "con-rec?";         // Send a message
         sendMessage(outgoing);
-        printDisplay();
+        //printDisplay();
         Serial.println("LORA TxD: " + outgoing);
         lastDiscoverTimeee = millis();
         lastControlTime = millis();
@@ -1602,7 +1598,7 @@ void loop() {
                 rssi_ee = rssi;
                 bL_ee = bL;
                 missed_ee = 0;
-                printDisplay();
+                //printDisplay();
                 mode = "request";
                 mode_s = "req";
                 emptyDisplay();
@@ -1616,7 +1612,7 @@ void loop() {
                 tally_ee = LOW;
                 counterTallys--;
                 }
-                printDisplay();
+                //printDisplay();
                 mode = "request"; 
                 mode_s = "req";
                 emptyDisplay();
@@ -1626,9 +1622,14 @@ void loop() {
         }
 
         // Function Print Display if nothing work
-        if (millis() - lastDisplayPrint > 10000) {
+        if (millis() - lastDisplayPrint > 30000 + random(15000)) {
+            
+            closeSPI_LORA();
+            startSPI_DISPLAY();
             emptyDisplay();
             printDisplay();
+            closeSPI_DISPLAY();
+            startSPI_LORA();
         }
   
 }
