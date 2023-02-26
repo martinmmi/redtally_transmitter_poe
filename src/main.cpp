@@ -61,6 +61,11 @@ char buf_bL_bb[4];
 char buf_bL_cc[4];
 char buf_bL_dd[4];
 char buf_bL_ee[4];
+char buf_ip[16];
+char buf_gw[16];
+char buf_sn[16];
+char buf_dns[16];
+char buf_ls[8];
 
 ///////////////////////////////////////////////
 ///////// Setup Transmitter Values ////////////
@@ -94,7 +99,7 @@ unsigned long lastAnalogReadTime = 0;
 unsigned long lastTestTime = 0;
 unsigned long lastDisplayPrint = 0;
 
-int defaultBrightnessDisplay = 150;   // value from 1 to 255
+int defaultBrightnessDisplay = 255;   // value from 1 to 255
 int counterSend = 0;
 int counterSendMax = 2;
 int counterTallys = 0;
@@ -140,6 +145,7 @@ bool ethConnected = false;
 bool useSTATIC = false;
 bool useDNS = false;
 bool bool_esm = false;
+bool ethState = false;
 
 ///////////////////////////////////////////////
 /////////// Setup Network Values //////////////
@@ -149,8 +155,8 @@ bool bool_esm = false;
 IPAddress local_ip (192, 168, 0, 55);       //uint32_t
 IPAddress gateway (192, 168, 0, 1);
 IPAddress subnet (255, 255, 255, 0);
-IPAddress dns1 (0, 0, 0, 0);
-IPAddress dns2 (0, 0, 0, 0);
+IPAddress dns1 (0, 1, 2, 3);
+IPAddress dns2 (0, 1, 2, 3);
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -595,6 +601,18 @@ void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *p
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
+String convertAddress(IPAddress address)
+{
+ return String(address[0]) + "." + 
+        String(address[1]) + "." + 
+        String(address[2]) + "." + 
+        String(address[3]);
+}
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
 void emptyDisplay() {
     string_destinationAddress = "";
     rx_adr = "";
@@ -609,29 +627,7 @@ void emptyDisplay() {
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
-void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Receive Address
-    /*
-    Serial.println("");
-    Serial.print("Mode: "); Serial.println(mode);
-    Serial.print("TxD Adr: "); Serial.println(string_destinationAddress);
-    Serial.print("TxD: "); Serial.println(outgoing);
-    Serial.print("RxD Adr: "); Serial.println(tx_adr);
-    Serial.print("RxD: "); Serial.println(incoming);
-    Serial.print("RxD Adr bb: "); Serial.println(tx_adr_bb);
-    Serial.print("RxD bb: "); Serial.println(incoming_bb);
-    Serial.print("Rssi: "); Serial.println(rssi_bb);
-    Serial.print("Tally bb: "); Serial.println(tally_bb);
-    Serial.print("Tally bb init: "); Serial.println(tally_bb_init);
-    Serial.print("Tally cc: "); Serial.println(tally_cc);
-    Serial.print("Tally cc init: "); Serial.println(tally_cc_init);
-    Serial.print("Tally dd: "); Serial.println(tally_dd);
-    Serial.print("Tally dd init: "); Serial.println(tally_dd_init);
-    Serial.print("Tally ee: "); Serial.println(tally_ee);
-    Serial.print("Tally ee init: "); Serial.println(tally_ee_init);
-    */
-
-    sprintf(buf_tx, "%s", outgoing);
-    sprintf(buf_rx, "%s", incoming);
+void printDisplay() {   
 
     sprintf(buf_bb, "%s", bb);
     sprintf(buf_cc, "%s", cc);
@@ -646,11 +642,24 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
     sprintf(buf_bL_cc, "%s", bL_cc);
     sprintf(buf_bL_dd, "%s", bL_dd);
     sprintf(buf_bL_ee, "%s", bL_ee);
+    
+
+    String MyIpAddress = convertAddress(ETH.localIP());
+    sprintf(buf_ip, "%s", MyIpAddress);
+
+    String MyGwAddress = convertAddress(ETH.gatewayIP());
+    sprintf(buf_gw, "%s", MyGwAddress);
+
+    String MySnAddress = convertAddress(ETH.subnetMask());
+    sprintf(buf_sn, "%s", MySnAddress);
+
+    String MyDnsAddress = convertAddress(ETH.dnsIP());
+    sprintf(buf_dns, "%s", MyDnsAddress);
+
+    sprintf(buf_ls, "%d", ETH.linkSpeed());
 
     sprintf(buf_localAddress, "%x", localAddress);          // byte
     sprintf(buf_mode, "%s", mode_s);                        // string  //%d for int
-    sprintf(buf_rxAdr, "%s", string_destinationAddress);            
-    sprintf(buf_txAdr, "%s", tx_adr);
 
     buf_rssi_bb_int = atoi(buf_rssi_bb);
     buf_rssi_cc_int = atoi(buf_rssi_cc);
@@ -658,16 +667,6 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
     buf_rssi_ee_int = atoi(buf_rssi_ee);
 
     u8g2.clearBuffer();					      // clear the internal memory
-
-    //TxD and RxD Indicator
-    u8g2.setFont(u8g2_font_6x10_tf);
-    u8g2.setDrawColor(1);
-    u8g2.drawStr(0,26,"TxD:");
-    u8g2.drawStr(30,26,buf_tx);
-    u8g2.drawStr(115,26,buf_rxAdr);
-    u8g2.drawStr(0,36,"RxD:");
-    u8g2.drawStr(30,36,buf_rx);
-    u8g2.drawStr(115,36,buf_txAdr);
     
     //Address Indicator
     u8g2.setFont(u8g2_font_6x13_tf);
@@ -679,156 +678,27 @@ void printDisplay() {   //tx Transmit Message,  rx Receive Message,   txAdr Rece
     //Mode Indicator
     u8g2.setFont(u8g2_font_6x13_tf);
     u8g2.setDrawColor(1);
-    u8g2.drawXBM(51, 3, lineWidth, lineHeight, line1);
+    u8g2.drawXBM(81, 3, lineWidth, lineHeight, line1);
     u8g2.setDrawColor(1);
-    u8g2.drawStr(29,12,buf_mode);
 
+    if (useSTATIC == true) {
+        u8g2.drawStr(29,12,"dhcp off");
+    }else {
+        u8g2.drawStr(29,12,"dhcp on");
+    }
+
+    //IP Indicator
     u8g2.setFont(u8g2_font_6x13_tf);
-    u8g2.setDrawColor(0);
+    u8g2.setDrawColor(1);
 
-    //Power Mode Indicator
-    u8g2.drawXBM(99, 0, batteryWidth, batteryHeight, battery0);
+    u8g2.drawStr(0,35,"IP:");
+    u8g2.drawStr(25,35,buf_ip);
+    u8g2.drawStr(0,50,"SN:");
+    u8g2.drawStr(25,50,buf_sn);
 
-    //Signal Strength Indicator bb
-    if (((tally_bb == HIGH) || (tally_bb_init == HIGH)) && (buf_rssi_bb_int <= -80) && (tx_adr_bb == "bb") && ((incoming_bb == "off") || (incoming_bb == "con"))) {
-        u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal1);
-    }
-    if (((tally_bb == HIGH) || (tally_bb_init == HIGH)) && (buf_rssi_bb_int <= -60 ) && (buf_rssi_bb_int >= -79) && (tx_adr_bb == "bb") && ((incoming_bb == "off") || (incoming_bb == "con"))) {
-        u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal2);
-    }
-    if (((tally_bb == HIGH) || (tally_bb_init == HIGH)) && (buf_rssi_bb_int <= -40 ) && (buf_rssi_bb_int >= -59) && (tx_adr_bb == "bb") && ((incoming_bb == "off") || (incoming_bb == "con"))) {
-        u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal3);
-    }
-    if (((tally_bb == HIGH) || (tally_bb_init == HIGH)) && (buf_rssi_bb_int <= -20 ) && (buf_rssi_bb_int >= -39) && (tx_adr_bb == "bb") && ((incoming_bb == "off") || (incoming_bb == "con"))) {
-        u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal4);
-    }
-    if (((tally_bb == HIGH) || (tally_bb_init == HIGH)) && (buf_rssi_bb_int >= -19) && (tx_adr_bb == "bb") && ((incoming_bb == "off") || (incoming_bb == "con"))) {
-        u8g2.drawXBM(8, 46, signalWidth, signalHeight, signal5);
-    }
-
-    //Signal Strength Indicator cc
-    if (((tally_cc == HIGH) || (tally_cc_init == HIGH)) && (buf_rssi_cc_int <= -80) && (tx_adr_cc == "cc") && ((incoming_cc == "off") || (incoming_cc == "con"))) {
-        u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal1);
-    }
-    if (((tally_cc == HIGH) || (tally_cc_init == HIGH)) && (buf_rssi_cc_int <= -60 ) && (buf_rssi_cc_int >= -79) && (tx_adr_cc == "cc") && ((incoming_cc == "off") || (incoming_cc == "con"))) {
-        u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal2);
-    }
-    if (((tally_cc == HIGH) || (tally_cc_init == HIGH)) && (buf_rssi_cc_int <= -40 ) && (buf_rssi_cc_int >= -59) && (tx_adr_cc == "cc") && ((incoming_cc == "off") || (incoming_cc == "con"))) {
-        u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal3);
-    }
-    if (((tally_cc == HIGH) || (tally_cc_init == HIGH)) && (buf_rssi_cc_int <= -20 ) && (buf_rssi_cc_int >= -39) && (tx_adr_cc == "cc") && ((incoming_cc == "off") || (incoming_cc == "con"))) {
-        u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal4);
-    }
-    if (((tally_cc == HIGH) || (tally_cc_init == HIGH)) && (buf_rssi_cc_int >= -19) && (tx_adr_cc == "cc") && ((incoming_cc == "off") || (incoming_cc == "con"))) {
-        u8g2.drawXBM(40, 46, signalWidth, signalHeight, signal5);
-    }
-
-    //Signal Strength Indicator dd
-    if (((tally_dd == HIGH) || (tally_dd_init == HIGH)) && (buf_rssi_dd_int <= -80) && (tx_adr_dd == "dd") && ((incoming_dd == "off") || (incoming_dd == "con"))) {
-        u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal1);
-    }
-    if (((tally_dd == HIGH) || (tally_dd_init == HIGH)) && (buf_rssi_dd_int <= -60 ) && (buf_rssi_dd_int >= -79) && (tx_adr_dd == "dd") && ((incoming_dd == "off") || (incoming_dd == "con"))) {
-        u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal2);
-    }
-    if (((tally_dd == HIGH) || (tally_dd_init == HIGH)) && (buf_rssi_dd_int <= -40 ) && (buf_rssi_dd_int >= -59) && (tx_adr_dd == "dd") && ((incoming_dd == "off") || (incoming_dd == "con"))) {
-        u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal3);
-    }
-    if (((tally_dd == HIGH) || (tally_dd_init == HIGH)) && (buf_rssi_dd_int <= -20 ) && (buf_rssi_dd_int >= -39) && (tx_adr_dd == "dd") && ((incoming_dd == "off") || (incoming_dd == "con"))) {
-        u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal4);
-    }
-    if (((tally_dd == HIGH) || (tally_dd_init == HIGH)) && (buf_rssi_dd_int >= -19) && (tx_adr_dd == "dd") && ((incoming_dd == "off") || (incoming_dd == "con"))) {
-        u8g2.drawXBM(72, 46, signalWidth, signalHeight, signal5);
-    }
-
-    //Signal Strength Indicator ee
-    if (((tally_ee == HIGH) || (tally_ee_init == HIGH)) && (buf_rssi_ee_int <= -80) && (tx_adr_ee == "ee") && ((incoming_ee == "off") || (incoming_ee == "con"))) {
-        u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal1);
-    }
-    if (((tally_ee == HIGH) || (tally_ee_init == HIGH)) && (buf_rssi_ee_int <= -60 ) && (buf_rssi_ee_int >= -79) && (tx_adr_ee == "ee") && ((incoming_ee == "off") || (incoming_ee == "con"))) {
-        u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal2);
-    }
-    if (((tally_ee == HIGH) || (tally_ee_init == HIGH)) && (buf_rssi_ee_int <= -40 ) && (buf_rssi_ee_int >= -59) && (tx_adr_ee == "ee") && ((incoming_ee == "off") || (incoming_ee == "con"))) {
-        u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal3);
-    }
-    if (((tally_ee == HIGH) || (tally_ee_init == HIGH)) && (buf_rssi_ee_int <= -20 ) && (buf_rssi_ee_int >= -39) && (tx_adr_ee == "ee") && ((incoming_ee == "off") || (incoming_ee == "con"))) {
-        u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal4);
-    }
-    if (((tally_ee == HIGH) || (tally_ee_init == HIGH)) && (buf_rssi_ee_int >= -19) && (tx_adr_ee == "ee") && ((incoming_ee == "off") || (incoming_ee == "con"))) {
-        u8g2.drawXBM(104, 46, signalWidth, signalHeight, signal5);
-    }
-
-    //Signal Lost Indicator bb
-    if ((tally_bb == LOW) && (tally_bb_init == HIGH)) {
-        u8g2.setDrawColor(1);
-        u8g2.setFont(u8g2_font_6x10_tf);
-        u8g2.drawStr(0,47,buf_rssi_bb);
-        u8g2.drawStr(6,55,buf_bb);
-        u8g2.setFont(u8g2_font_10x20_tf);
-        u8g2.drawStr(19,47,buf_lost);
-    }
-
-    //Signal Lost Indicator cc
-    if ((tally_cc == LOW) && (tally_cc_init == HIGH)) {
-        u8g2.setDrawColor(1);
-        u8g2.setFont(u8g2_font_6x10_tf);
-        u8g2.drawStr(32,47,buf_rssi_cc);
-        u8g2.drawStr(38,55,buf_cc);
-        u8g2.setFont(u8g2_font_10x20_tf);
-        u8g2.drawStr(51,47,buf_lost);
-    }
-
-    //Signal Lost Indicator dd
-    if ((tally_dd == LOW) && (tally_dd_init == HIGH)) {
-        u8g2.setDrawColor(1);
-        u8g2.setFont(u8g2_font_6x10_tf);
-        u8g2.drawStr(64,47,buf_rssi_dd);
-        u8g2.drawStr(70,55,buf_dd);
-        u8g2.setFont(u8g2_font_10x20_tf);
-        u8g2.drawStr(83,47,buf_lost);
-    }
-
-    //Signal Lost Indicator ee
-    if ((tally_ee == LOW) && (tally_ee_init == HIGH)) {
-        u8g2.setDrawColor(1);
-        u8g2.setFont(u8g2_font_6x10_tf);
-        u8g2.drawStr(96,47,buf_rssi_ee);
-        u8g2.drawStr(102,55,buf_ee);
-        u8g2.setFont(u8g2_font_10x20_tf);
-        u8g2.drawStr(115,47,buf_lost);
-    }
-
-    //Signal High Indicator bb
-    if ((tally_bb == HIGH) && (tally_bb_init == HIGH)) {
-        u8g2.setDrawColor(1);
-        u8g2.setFont(u8g2_font_6x10_tf);
-        u8g2.drawStr(0,47,buf_rssi_bb);
-        u8g2.drawStr(6,55,buf_bb);
-    }
-
-    //Signal High Indicator cc
-    if ((tally_cc == HIGH) && (tally_cc_init == HIGH)) {
-        u8g2.setDrawColor(1);
-        u8g2.setFont(u8g2_font_6x10_tf);
-        u8g2.drawStr(32,47,buf_rssi_cc);
-        u8g2.drawStr(38,55,buf_cc);
-    }
-
-    //Signal High Indicator dd
-    if ((tally_dd == HIGH) && (tally_dd_init == HIGH)) {
-        u8g2.setDrawColor(1);
-        u8g2.setFont(u8g2_font_6x10_tf);
-        u8g2.drawStr(64,47,buf_rssi_dd);
-        u8g2.drawStr(70,55,buf_dd);
-    }
-
-    //Signal High Indicator ee
-    if ((tally_ee == HIGH) && (tally_ee_init == HIGH)) {
-        u8g2.setDrawColor(1);
-        u8g2.setFont(u8g2_font_6x10_tf);
-        u8g2.drawStr(96,47,buf_rssi_ee);
-        u8g2.drawStr(102,55,buf_ee);
-    }
-
+    //u8g2.drawStr(0,54,buf_ls);
+    //u8g2.drawStr(30,54,"Mbps");
+    
     u8g2.sendBuffer();
 
     lastDisplayPrint = millis();
@@ -899,20 +769,20 @@ void setup() {
     digitalWrite(LORA_CS, HIGH);
     digitalWrite(DISPLAY_CS, HIGH);
 
-    pinMode(SD_MISO, INPUT_PULLUP);
+    //pinMode(SD_MISO, INPUT_PULLUP);
 
 //////////////////////////////////////////////////////////////////////
 
     eeprom.begin("network", false);                //false mean use read/write mode
     useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
     useDNS = eeprom.getBool("dns", false);
-    //Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
-    //Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
+    //Serial.print("useSTATIC: "); Serial.print(useSTATIC);
+    //Serial.print("useDNS: "); Serial.print(useDNS);
     eeprom.end();
 
     eeprom.begin("configuration", false);         
     bool_esm = eeprom.getBool("esm", false);
-    //Serial.print("bool_esm: "); Serial.print(bool_esm); Serial.print(" Size: "); Serial.println(sizeof(bool_esm));
+    //Serial.print("bool_esm: "); Serial.print(bool_esm);
     eeprom.end();
 
 //////////////////////////////////////////////////////////////////////
@@ -924,8 +794,7 @@ void setup() {
     if (!SD.begin(SD_CS)) {                                                 // initialize sd card
         Serial.println("SD-Card init failed. Check your connections.");    
         //while (true);                                                       // if failed, do nothing
-    }
-    if (SD.begin(SD_CS)) {    
+    }else {    
         Serial.println("SD-Card init succeeded."); 
     }
 
@@ -933,7 +802,6 @@ void setup() {
     SPI.end();
     //SPI.endTransaction();
 
-    
 //////////////////////////////////////////////////////////////////////
 
     SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI);     
@@ -1056,12 +924,11 @@ void setup() {
 
     server.on("/dhcp-on", HTTP_GET, [](AsyncWebServerRequest *request){
         useSTATIC = false;
-        Serial.println("WRITE!");
         eeprom.begin("network", false);                //false mean use read/write mode
         eeprom.putBool("dhcp", useSTATIC);     
         eeprom.end();
-        Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
-        Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
+        //Serial.print("useSTATIC: "); Serial.print(useSTATIC);
+        //Serial.print("useDNS: "); Serial.print(useDNS);
         request->send(SPIFFS, "/network.html", String(), false, proc_state);
         delay(2000);
         ESP.restart();
@@ -1069,12 +936,11 @@ void setup() {
 
     server.on("/dhcp-off", HTTP_GET, [](AsyncWebServerRequest *request){
         useSTATIC = true;
-        Serial.println("WRITE!");
         eeprom.begin("network", false);                //false mean use read/write mode
         eeprom.putBool("dhcp", useSTATIC);     
         eeprom.end();
-        Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
-        Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
+        //Serial.print("useSTATIC: "); Serial.print(useSTATIC);
+        //Serial.print("useDNS: "); Serial.print(useDNS);
         request->send(SPIFFS, "/network.html", String(), false, proc_state);
         delay(2000);
         ESP.restart();
@@ -1085,8 +951,8 @@ void setup() {
         eeprom.begin("network", false);                //false mean use read/write mode
         eeprom.putBool("dns", useDNS);     
         eeprom.end();
-        Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
-        Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
+        //Serial.print("useSTATIC: "); Serial.print(useSTATIC);
+        //Serial.print("useDNS: "); Serial.print(useDNS);
         request->send(SPIFFS, "/network.html", String(), false, proc_state);
         delay(2000);
         ESP.restart();
@@ -1097,8 +963,8 @@ void setup() {
         eeprom.begin("network", false);                //false mean use read/write mode
         eeprom.putBool("dns", useDNS);     
         eeprom.end();
-        Serial.print("useSTATIC: "); Serial.print(useSTATIC); Serial.print(" Size: "); Serial.println(sizeof(useSTATIC));
-        Serial.print("useDNS: "); Serial.print(useDNS); Serial.print(" Size: "); Serial.println(sizeof(useDNS));
+        //Serial.print("useSTATIC: "); Serial.print(useSTATIC);
+        //Serial.print("useDNS: "); Serial.print(useDNS);
         request->send(SPIFFS, "/network.html", String(), false, proc_state);
         delay(2000);
         ESP.restart();
@@ -1151,7 +1017,6 @@ void loop() {
         string_destinationAddress = "ff";
         outgoing = "dis-anyrec?";         // Send a message
         sendMessage(outgoing);
-        //printDisplay();
         Serial.println("LORA TxD: " + outgoing);
         lastOfferTime = millis();
         lastOfferTimeRef = millis();
@@ -1177,7 +1042,6 @@ void loop() {
             rssi_bb = rssi;
             bL_bb = bL;
             counterTallys++;
-            //printDisplay();();
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1191,7 +1055,6 @@ void loop() {
             rssi_cc = rssi;
             bL_cc = bL;
             counterTallys++;
-            //printDisplay();
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1205,7 +1068,6 @@ void loop() {
             rssi_dd = rssi;
             bL_dd = bL;
             counterTallys++;
-            //printDisplay();
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1219,7 +1081,6 @@ void loop() {
             rssi_ee = rssi;
             bL_ee = bL;
             counterTallys++;
-            //printDisplay();
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
             emptyDisplay();
@@ -1227,7 +1088,6 @@ void loop() {
 
         if ((millis() - lastOfferTimeRef > 2500)) {      // every 2.5 s clear display
             emptyDisplay();
-            //printDisplay();
             lastOfferTimeRef = millis();
         }
 
@@ -1260,12 +1120,11 @@ void loop() {
         gpioV3Cal = gpioV3Map * (3.3 / 3695.0);
         gpioV4Cal = gpioV4Map * (3.3 / 3695.0);
 
-        if (gpioV1Cal > 2.0 && tally_bb == HIGH && gpioC1 == HIGH) {
+        if (gpioV1Cal > 2.5 && tally_bb == HIGH && gpioC1 == HIGH) {
             destination = 0xbb;
             string_destinationAddress = "bb";
             outgoing = "req-high";         // Send a message
             sendMessage(outgoing);
-            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC1 = !gpioC1;
             mode = "acknowledge";
@@ -1274,12 +1133,11 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV1Cal < 2.0 && tally_bb == HIGH && gpioC1 == LOW) {
+        if (gpioV1Cal < 2.5 && tally_bb == HIGH && gpioC1 == LOW) {
             destination = 0xbb;
             string_destinationAddress = "bb";
             outgoing = "req-low";         // Send a message
             sendMessage(outgoing);
-            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC1 = !gpioC1;
             mode = "acknowledge";
@@ -1288,12 +1146,11 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV2Cal > 2.0 && tally_cc == HIGH && gpioC2 == HIGH) {
+        if (gpioV2Cal > 2.5 && tally_cc == HIGH && gpioC2 == HIGH) {
             destination = 0xcc;
             string_destinationAddress = "cc";
             outgoing = "req-high";         // Send a message
             sendMessage(outgoing);
-            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC2 = !gpioC2;
             mode = "acknowledge";
@@ -1302,12 +1159,11 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV2Cal < 2.0 && tally_cc == HIGH && gpioC2 == LOW) {
+        if (gpioV2Cal < 2.5 && tally_cc == HIGH && gpioC2 == LOW) {
             destination = 0xcc;
             string_destinationAddress = "cc";
             outgoing = "req-low";         // Send a message
             sendMessage(outgoing);
-            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC2 = !gpioC2;
             mode = "acknowledge";
@@ -1316,12 +1172,11 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV3Cal > 2.0 && tally_dd == HIGH && gpioC3 == HIGH) {
+        if (gpioV3Cal > 2.5 && tally_dd == HIGH && gpioC3 == HIGH) {
             destination = 0xdd;
             string_destinationAddress = "dd";
             outgoing = "req-high";         // Send a message
             sendMessage(outgoing);
-            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC3 = !gpioC3;
             mode = "acknowledge";
@@ -1330,12 +1185,11 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV3Cal < 2.0 && tally_dd == HIGH && gpioC3 == LOW) {
+        if (gpioV3Cal < 2.5 && tally_dd == HIGH && gpioC3 == LOW) {
             destination = 0xdd;
             string_destinationAddress = "dd";
             outgoing = "req-low";         // Send a message
             sendMessage(outgoing);
-            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC3 = !gpioC3;
             mode = "acknowledge";
@@ -1344,12 +1198,11 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV4Cal > 2.0 && tally_ee == HIGH && gpioC4 == HIGH) {
+        if (gpioV4Cal > 2.5 && tally_ee == HIGH && gpioC4 == HIGH) {
             destination = 0xee;
             string_destinationAddress = "ee";
             outgoing = "req-high";         // Send a message
             sendMessage(outgoing);
-            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC4 = !gpioC4;
             mode = "acknowledge";
@@ -1358,12 +1211,11 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV4Cal < 2.0 && tally_ee == HIGH && gpioC4 == LOW) {
+        if (gpioV4Cal < 2.5 && tally_ee == HIGH && gpioC4 == LOW) {
             destination = 0xee;
             string_destinationAddress = "ee";
             outgoing = "req-low";         // Send a message
             sendMessage(outgoing);
-            //printDisplay();
             Serial.println("LORA TxD: " + outgoing);
             gpioC4 = !gpioC4;
             mode = "acknowledge";
@@ -1381,7 +1233,6 @@ void loop() {
         // Back to Request Mode
         if ((incoming == "ack") && ((tx_adr == "bb") || (tx_adr == "cc") || (tx_adr == "dd") ||  (tx_adr == "ee"))) {
             Serial.println("LORA RxD: " + incoming);
-            //printDisplay();
             mode = "request";
             mode_s = "req";
             emptyDisplay();
@@ -1394,7 +1245,6 @@ void loop() {
         mode = "request";
         mode_s = "req";
         counterSend++;
-        //printDisplay();
         gpioC1 = !gpioC1;
         gpioC2 = !gpioC2;
         gpioC3 = !gpioC3;
@@ -1408,7 +1258,6 @@ void loop() {
         mode = "request";
         mode_s = "req";
         counterSend = 0;
-        //printDisplay();
         break;
     }
     }
@@ -1419,7 +1268,6 @@ void loop() {
         string_destinationAddress = "bb";
         outgoing = "con-rec?";         // Send a message
         sendMessage(outgoing);
-        //printDisplay();
         Serial.println("LORA TxD: " + outgoing);
         lastDiscoverTimebb = millis();
         lastControlTime = millis();
@@ -1442,7 +1290,6 @@ void loop() {
             rssi_bb = rssi;
             bL_bb = bL;
             missed_bb = 0;
-            //printDisplay();
             mode = "request";
             mode_s = "req";
             emptyDisplay();
@@ -1456,7 +1303,6 @@ void loop() {
                 tally_bb = LOW;
                 counterTallys--;
             }
-            //printDisplay();
             mode = "request"; 
             mode_s = "req";
             emptyDisplay();
@@ -1471,7 +1317,6 @@ void loop() {
         string_destinationAddress = "cc";
         outgoing = "con-rec?";         // Send a message
         sendMessage(outgoing);
-        //printDisplay();
         Serial.println("LORA TxD: " + outgoing);
         lastDiscoverTimecc = millis();
         lastControlTime = millis();
@@ -1494,7 +1339,6 @@ void loop() {
                 rssi_cc = rssi;
                 bL_cc = bL;
                 missed_cc = 0;
-                //printDisplay();
                 mode = "request";
                 mode_s = "req";
                 emptyDisplay();
@@ -1508,7 +1352,6 @@ void loop() {
                 tally_cc = LOW;
                 counterTallys--;
                 }
-                //printDisplay();
                 mode = "request"; 
                 mode_s = "req";
                 emptyDisplay();
@@ -1523,7 +1366,6 @@ void loop() {
         string_destinationAddress = "dd";
         outgoing = "con-rec?";         // Send a message
         sendMessage(outgoing);
-        //printDisplay();
         Serial.println("LORA TxD: " + outgoing);
         lastDiscoverTimedd = millis();
         lastControlTime = millis();
@@ -1546,7 +1388,6 @@ void loop() {
                 rssi_dd = rssi;
                 bL_dd = bL;
                 missed_dd = 0;
-                //printDisplay();
                 mode = "request";
                 mode_s = "req";
                 emptyDisplay();
@@ -1560,7 +1401,6 @@ void loop() {
                 tally_dd = LOW;
                 counterTallys--;
                 }
-                //printDisplay();
                 mode = "request"; 
                 mode_s = "req";
                 emptyDisplay();
@@ -1575,7 +1415,6 @@ void loop() {
         string_destinationAddress = "ee";
         outgoing = "con-rec?";         // Send a message
         sendMessage(outgoing);
-        //printDisplay();
         Serial.println("LORA TxD: " + outgoing);
         lastDiscoverTimeee = millis();
         lastControlTime = millis();
@@ -1598,7 +1437,6 @@ void loop() {
                 rssi_ee = rssi;
                 bL_ee = bL;
                 missed_ee = 0;
-                //printDisplay();
                 mode = "request";
                 mode_s = "req";
                 emptyDisplay();
@@ -1612,7 +1450,6 @@ void loop() {
                 tally_ee = LOW;
                 counterTallys--;
                 }
-                //printDisplay();
                 mode = "request"; 
                 mode_s = "req";
                 emptyDisplay();
@@ -1622,7 +1459,7 @@ void loop() {
         }
 
         // Function Print Display if nothing work
-        if (millis() - lastDisplayPrint > 30000 + random(15000)) {
+        if (ethConnected == true && ethState == false) {
             
             closeSPI_LORA();
             startSPI_DISPLAY();
@@ -1630,8 +1467,18 @@ void loop() {
             printDisplay();
             closeSPI_DISPLAY();
             startSPI_LORA();
+            ethState = !ethState;
         }
-  
+        if (ethConnected == false && ethState == true) {
+            
+            closeSPI_LORA();
+            startSPI_DISPLAY();
+            emptyDisplay();
+            printDisplay();
+            closeSPI_DISPLAY();
+            startSPI_LORA();
+            ethState = !ethState;
+        }
 }
 
 //////////////////////////////////////////////////////////////////////
