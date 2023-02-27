@@ -66,6 +66,12 @@ char buf_gw[16];
 char buf_sn[16];
 char buf_dns[16];
 char buf_ls[8];
+char buf_sdInit[32];
+char buf_loraInit[32];
+char buf_oledInit[32];
+char buf_spiffsInit[32];
+char buf_mdnsInit[32];
+char buf_httpInit[32];
 
 ///////////////////////////////////////////////
 ///////// Setup Transmitter Values ////////////
@@ -146,6 +152,9 @@ bool useSTATIC = false;
 bool useDNS = false;
 bool bool_esm = false;
 bool ethState = false;
+bool loraInit = false;
+bool sdInit = false;
+bool oledInit = false;
 
 ///////////////////////////////////////////////
 /////////// Setup Network Values //////////////
@@ -643,20 +652,21 @@ void printDisplay() {
     sprintf(buf_bL_dd, "%s", bL_dd);
     sprintf(buf_bL_ee, "%s", bL_ee);
     
+    if (ethConnected == true) {
+        String MyIpAddress = convertAddress(ETH.localIP());
+        sprintf(buf_ip, "%s", MyIpAddress);
 
-    String MyIpAddress = convertAddress(ETH.localIP());
-    sprintf(buf_ip, "%s", MyIpAddress);
+        String MyGwAddress = convertAddress(ETH.gatewayIP());
+        sprintf(buf_gw, "%s", MyGwAddress);
 
-    String MyGwAddress = convertAddress(ETH.gatewayIP());
-    sprintf(buf_gw, "%s", MyGwAddress);
+        String MySnAddress = convertAddress(ETH.subnetMask());
+        sprintf(buf_sn, "%s", MySnAddress);
 
-    String MySnAddress = convertAddress(ETH.subnetMask());
-    sprintf(buf_sn, "%s", MySnAddress);
+        String MyDnsAddress = convertAddress(ETH.dnsIP());
+        sprintf(buf_dns, "%s", MyDnsAddress);
 
-    String MyDnsAddress = convertAddress(ETH.dnsIP());
-    sprintf(buf_dns, "%s", MyDnsAddress);
-
-    sprintf(buf_ls, "%d", ETH.linkSpeed());
+        sprintf(buf_ls, "%d", ETH.linkSpeed());
+    }
 
     sprintf(buf_localAddress, "%x", localAddress);          // byte
     sprintf(buf_mode, "%s", mode_s);                        // string  //%d for int
@@ -682,19 +692,28 @@ void printDisplay() {
     u8g2.setDrawColor(1);
 
     if (useSTATIC == true) {
+        u8g2.setFont(u8g2_font_6x13_tf);
+        u8g2.setDrawColor(1);
         u8g2.drawStr(29,12,"dhcp off");
     }else {
+        u8g2.setFont(u8g2_font_6x13_tf);
+        u8g2.setDrawColor(1);
         u8g2.drawStr(29,12,"dhcp on");
     }
 
     //IP Indicator
-    u8g2.setFont(u8g2_font_6x13_tf);
-    u8g2.setDrawColor(1);
-
-    u8g2.drawStr(0,35,"IP:");
-    u8g2.drawStr(25,35,buf_ip);
-    u8g2.drawStr(0,50,"SN:");
-    u8g2.drawStr(25,50,buf_sn);
+    if (ethConnected == true) {
+        u8g2.setFont(u8g2_font_6x13_tf);
+        u8g2.setDrawColor(1);
+        u8g2.drawStr(0,35,"IP:");
+        u8g2.drawStr(25,35,buf_ip);
+        u8g2.drawStr(0,50,"SN:");
+        u8g2.drawStr(25,50,buf_sn);
+    }else {
+        u8g2.setFont(u8g2_font_6x13_tf);
+        u8g2.setDrawColor(0);
+        u8g2.drawBox(0,35,80,40);
+    }
 
     //u8g2.drawStr(0,54,buf_ls);
     //u8g2.drawStr(30,54,"Mbps");
@@ -792,10 +811,9 @@ void setup() {
     digitalWrite(SD_CS, LOW);
 
     if (!SD.begin(SD_CS)) {                                                 // initialize sd card
-        Serial.println("SD-Card init failed. Check your connections.");    
-        //while (true);                                                       // if failed, do nothing
-    }else {    
-        Serial.println("SD-Card init succeeded."); 
+        sdInit = false;   
+    }else {     
+        sdInit = true; 
     }
 
     digitalWrite(SD_CS, HIGH);
@@ -817,11 +835,10 @@ void setup() {
     LoRa.begin(loraFrequenz);
 
     if (!LoRa.begin(loraFrequenz)) {                                        // initialize lora frequenz
-        Serial.println("LORA init failed. Check your connections.");    
-        while (true);                                                       // if failed, do nothing
+        loraInit = false; 
     }
     if (LoRa.begin(loraFrequenz)) {    
-        Serial.println("LORA init succeeded.");
+        loraInit = true; 
     }
 
     digitalWrite(LORA_CS, HIGH);
@@ -840,6 +857,12 @@ void setup() {
     u8g2.setContrast(defaultBrightnessDisplay);                  
     u8g2.setFlipMode(0);
 
+    if (!u8g2.begin()) {                                                      // initialize oled
+        oledInit = false;   
+    }else {     
+        oledInit = true; 
+    }
+
     //        Color, Delay, Runs
     printLogo(0, 50);
     delay(1000);
@@ -848,23 +871,69 @@ void setup() {
     delay(500);
     printLoad(1, 80, 4);
     delay(500);
-    printLora(1);
-    delay(2500);
 
-    emptyDisplay();
-    printDisplay();
+    sprintf(buf_version, "%s", version);
+    u8g2.drawStr(99,60,buf_version);
+    u8g2.sendBuffer();
 
-    digitalWrite(DISPLAY_CS, HIGH);
-    SPI.end();
-    //SPI.endTransaction();
+    if (sdInit == true) {
+        Serial.println("SD-Card init succeeded.");
+        sprintf(buf_sdInit, "%s", "SD init");
+        u8g2.drawStr(0,10,buf_sdInit);
+        u8g2.sendBuffer();
+        delay(300);
+    }else{
+        Serial.println("SD-Card init failed. Check your connections."); 
+        sprintf(buf_sdInit, "%s", "SD failed");
+        u8g2.drawStr(0,10,buf_sdInit);
+        u8g2.sendBuffer();
+        delay(300);
+    }
 
+    if (loraInit == true) {
+        Serial.println("LORA init succeeded.");
+        sprintf(buf_loraInit, "%s", "LORA init");
+        u8g2.drawStr(0,20,buf_loraInit);
+        u8g2.sendBuffer();
+        delay(300);
+    }else{
+        Serial.println("LORA init failed. Check your connections.");
+        sprintf(buf_loraInit, "%s", "LORA failed");
+        u8g2.drawStr(0,20,buf_loraInit);
+        u8g2.sendBuffer();
+        delay(300);
+        while (true);
+    }
+
+    if (oledInit == true) {
+        Serial.println("OLED init succeeded.");
+        sprintf(buf_oledInit, "%s", "OLED init");
+        u8g2.drawStr(0,30,buf_oledInit);
+        u8g2.sendBuffer();
+        delay(300);
+    }else{
+        Serial.println("OLED init failed. Check your connections."); 
+        sprintf(buf_oledInit, "%s", "OLED failed");
+        u8g2.drawStr(0,30,buf_oledInit);
+        u8g2.sendBuffer();
+        delay(300);
+    }
+    
 //////////////////////////////////////////////////////////////////////  
 
     if(!SPIFFS.begin(true)){
         Serial.println("SPIFFS init failed. An Error has occurred while mounting SPIFFS");
+        sprintf(buf_spiffsInit, "%s", "SPIFFS failed");
+        u8g2.drawStr(0,35,buf_spiffsInit);
+        u8g2.sendBuffer();
+        delay(300);
         while (true);
     }
     Serial.println("SPIFFS init succeeded.");
+    sprintf(buf_spiffsInit, "%s", "SPIFFS init");
+    u8g2.drawStr(0,40,buf_spiffsInit);
+    u8g2.sendBuffer();
+    delay(300);
 
 //////////////////////////////////////////////////////////////////////
 
@@ -894,6 +963,10 @@ void setup() {
 
     if (MDNS.begin("redtally")) {
         Serial.println("MDNS responder started.");
+        sprintf(buf_mdnsInit, "%s", "MDNS started");
+        u8g2.drawStr(0,50,buf_mdnsInit);
+        u8g2.sendBuffer();
+        delay(300);
     }
 
 //////////////////////////////////////////////////////////////////////
@@ -1000,6 +1073,22 @@ void setup() {
 
     server.begin();
     Serial.println("HTTP server started.");
+    sprintf(buf_httpInit, "%s", "HTTP started");
+    u8g2.drawStr(0,60,buf_httpInit);
+    u8g2.sendBuffer();
+    delay(500);
+
+//////////////////////////////////////////////////////////////////////
+ 
+    printLora(1);
+    delay(2500);
+
+    emptyDisplay();
+    printDisplay();
+
+    digitalWrite(DISPLAY_CS, HIGH);
+    SPI.end();
+    //SPI.endTransaction();
 
     startSPI_LORA();
 
