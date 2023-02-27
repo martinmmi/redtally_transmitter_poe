@@ -864,7 +864,7 @@ void setup() {
     }
 
     //        Color, Delay, Runs
-    printLogo(0, 50);
+    printLogo(0, 70);
     delay(1000);
     printLoad(1, 80, 2);
     printLogo(0, 25);
@@ -1200,16 +1200,16 @@ void loop() {
         gpioV2 = analogRead(gpioP2);
         gpioV3 = analogRead(gpioP3);
         gpioV4 = analogRead(gpioP4);
-        gpioV1Map = map(gpioV1, 400, 4095, 0, 3695);
-        gpioV2Map = map(gpioV2, 400, 4095, 0, 3695);
-        gpioV3Map = map(gpioV3, 400, 4095, 0, 3695);
-        gpioV4Map = map(gpioV4, 400, 4095, 0, 3695); 
-        gpioV1Cal = gpioV1Map * (3.3 / 3695.0);
-        gpioV2Cal = gpioV2Map * (3.3 / 3695.0);
-        gpioV3Cal = gpioV3Map * (3.3 / 3695.0);
-        gpioV4Cal = gpioV4Map * (3.3 / 3695.0);
+        gpioV1Map = map(gpioV1, 0, 4095, 0, 4095);
+        gpioV2Map = map(gpioV2, 0, 4095, 0, 4095);
+        gpioV3Map = map(gpioV3, 0, 4095, 0, 4095);
+        gpioV4Map = map(gpioV4, 0, 4095, 0, 4095); 
+        gpioV1Cal = gpioV1Map * (3.3 / 4095.0);
+        gpioV2Cal = gpioV2Map * (3.3 / 4095.0);
+        gpioV3Cal = gpioV3Map * (3.3 / 4095.0);
+        gpioV4Cal = gpioV4Map * (3.3 / 4095.0);
 
-        if (gpioV1Cal > 2.5 && tally_bb == HIGH && gpioC1 == HIGH) {
+        if (gpioV1Cal > 2.2 && tally_bb == HIGH && gpioC1 == HIGH) {
             destination = 0xbb;
             string_destinationAddress = "bb";
             outgoing = "req-high";         // Send a message
@@ -1222,7 +1222,7 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV1Cal < 2.5 && tally_bb == HIGH && gpioC1 == LOW) {
+        if (gpioV1Cal < 2.2 && tally_bb == HIGH && gpioC1 == LOW) {
             destination = 0xbb;
             string_destinationAddress = "bb";
             outgoing = "req-low";         // Send a message
@@ -1235,7 +1235,7 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV2Cal > 2.5 && tally_cc == HIGH && gpioC2 == HIGH) {
+        if (gpioV2Cal > 2.2 && tally_cc == HIGH && gpioC2 == HIGH) {
             destination = 0xcc;
             string_destinationAddress = "cc";
             outgoing = "req-high";         // Send a message
@@ -1248,7 +1248,7 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV2Cal < 2.5 && tally_cc == HIGH && gpioC2 == LOW) {
+        if (gpioV2Cal < 2.2 && tally_cc == HIGH && gpioC2 == LOW) {
             destination = 0xcc;
             string_destinationAddress = "cc";
             outgoing = "req-low";         // Send a message
@@ -1261,7 +1261,7 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV3Cal > 2.5 && tally_dd == HIGH && gpioC3 == HIGH) {
+        if (gpioV3Cal > 2.2 && tally_dd == HIGH && gpioC3 == HIGH) {
             destination = 0xdd;
             string_destinationAddress = "dd";
             outgoing = "req-high";         // Send a message
@@ -1274,7 +1274,7 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV3Cal < 2.5 && tally_dd == HIGH && gpioC3 == LOW) {
+        if (gpioV3Cal < 2.2 && tally_dd == HIGH && gpioC3 == LOW) {
             destination = 0xdd;
             string_destinationAddress = "dd";
             outgoing = "req-low";         // Send a message
@@ -1287,7 +1287,7 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV4Cal > 2.5 && tally_ee == HIGH && gpioC4 == HIGH) {
+        if (gpioV4Cal > 2.2 && tally_ee == HIGH && gpioC4 == HIGH) {
             destination = 0xee;
             string_destinationAddress = "ee";
             outgoing = "req-high";         // Send a message
@@ -1300,7 +1300,7 @@ void loop() {
             emptyDisplay();
         }
 
-        if (gpioV4Cal < 2.5 && tally_ee == HIGH && gpioC4 == LOW) {
+        if (gpioV4Cal < 2.2 && tally_ee == HIGH && gpioC4 == LOW) {
             destination = 0xee;
             string_destinationAddress = "ee";
             outgoing = "req-low";         // Send a message
