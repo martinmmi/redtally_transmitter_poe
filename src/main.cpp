@@ -73,6 +73,16 @@ char buf_spiffsInit[32];
 char buf_mdnsInit[32];
 char buf_httpInit[32];
 
+char buf_loraFrequenz[12];
+char buf_loraTxPower[4];
+char buf_loraSpreadingFactor[4];
+char buf_loraSignalBandwidth[12];
+char buf_loraCodingRate[4];
+char buf_loraPreambleLength[8];
+
+const char* username = "admin";
+const char* password = "admin";
+
 ///////////////////////////////////////////////
 ///////// Setup Transmitter Values ////////////
 ///////////////////////////////////////////////
@@ -329,6 +339,36 @@ String proc_state(const String& state){
 
     if(state == "STATE_VERSION"){
             return version;
+    }
+
+    sprintf(buf_loraFrequenz, "%f", loraFrequenz);
+    if(state == "STATE_LORA_FREQ"){
+            return buf_loraFrequenz;
+    }
+
+    sprintf(buf_loraTxPower, "%d", loraTxPower);
+    if(state == "STATE_LORA_TXP"){
+            return buf_loraTxPower;
+    }
+
+    sprintf(buf_loraSpreadingFactor, "%d", loraSpreadingFactor);
+    if(state == "STATE_LORA_SF"){
+            return buf_loraSpreadingFactor;
+    }
+
+    sprintf(buf_loraSignalBandwidth, "%f", loraSignalBandwidth);
+    if(state == "STATE_LORA_SB"){
+            return buf_loraSignalBandwidth;
+    }
+
+    sprintf(buf_loraCodingRate, "%d", loraCodingRate);
+    if(state == "STATE_LORA_CR"){
+            return buf_loraCodingRate;
+    }
+
+    sprintf(buf_loraPreambleLength, "%d", loraPreambleLength);
+    if(state == "STATE_LORA_PL"){
+            return buf_loraPreambleLength;
     }
 
   return String();
