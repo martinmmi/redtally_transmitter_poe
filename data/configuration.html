@@ -30,7 +30,20 @@
       </td>
     </tr>
   </table>
+  <br>
 
+  <p>MODE: <strong> %STATE_TSL%</strong></p>
+
+  <table>
+    <tr>
+      <td>
+        <a href="/tsl"><button class="buttonTsl">TSL</button></a>
+      </td>
+      <td> 
+        <a href="/gpio"><button class="buttonGpio">GPIO</button></a>
+      </td>
+    </tr>
+  </table>
   <br>
 
   <p>LoRa-Configuration:</p>
@@ -61,8 +74,16 @@
       <td align=left>%STATE_LORA_PL%</td>
     </tr>
   </table>
-
   <br>
+
+  <form action="/get-txp">
+    <input class="field" type="text" name="input6" placeholder="Transmit Power">
+    <br>
+    <br>
+    <input class="buttonReturn" type="submit" value="Submit">
+  </form>
+  <br>
+
   <p>ESM: <strong> %STATE_ESM%</strong></p>
 
   <table>

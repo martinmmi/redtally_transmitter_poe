@@ -39,7 +39,12 @@ String incoming_bb, incoming_cc, incoming_dd, incoming_ee;
 String rssi_bb, rssi_cc, rssi_dd, rssi_ee;
 String bL_bb, bL_cc, bL_dd, bL_ee;
 String html_state_bb, html_state_cc, html_state_dd, html_state_ee;
-String html_state_dhcp, html_state_dns, html_state_esm;
+String html_state_dhcp, html_state_dns, html_state_esm, html_state_tsl;
+String ipOctet1, ipOctet2, ipOctet3, ipOctet4;
+String gwOctet1, gwOctet2, gwOctet3, gwOctet4;
+String snOctet1, snOctet2, snOctet3, snOctet4;
+String dns1Octet1, dns1Octet2, dns1Octet3, dns1Octet4;
+String dns2Octet1, dns2Octet2, dns2Octet3, dns2Octet4;
 
 char buf_tx[12];
 char buf_rx[12];
@@ -72,6 +77,31 @@ char buf_oledInit[32];
 char buf_spiffsInit[32];
 char buf_mdnsInit[32];
 char buf_httpInit[32];
+char buf_input_ip[32];
+char buf_input_gw[32];
+char buf_input_sn[32];
+char buf_input_dns1[32];
+char buf_input_dns2[32];
+char buf_ipOctet1[4];
+char buf_ipOctet2[4];
+char buf_ipOctet3[4];
+char buf_ipOctet4[4];
+char buf_gwOctet1[4];
+char buf_gwOctet2[4];
+char buf_gwOctet3[4];
+char buf_gwOctet4[4];
+char buf_snOctet1[4];
+char buf_snOctet2[4];
+char buf_snOctet3[4];
+char buf_snOctet4[4];
+char buf_dns1Octet1[4];
+char buf_dns1Octet2[4];
+char buf_dns1Octet3[4];
+char buf_dns1Octet4[4];
+char buf_dns2Octet1[4];
+char buf_dns2Octet2[4];
+char buf_dns2Octet3[4];
+char buf_dns2Octet4[4];
 
 char buf_loraFrequenz[12];
 char buf_loraTxPower[4];
@@ -79,6 +109,7 @@ char buf_loraSpreadingFactor[4];
 char buf_loraSignalBandwidth[12];
 char buf_loraCodingRate[4];
 char buf_loraPreambleLength[8];
+char buf_txpower[4];
 
 const char* username = "admin";
 const char* password = "admin";
@@ -88,6 +119,7 @@ const char* param_gw = "input2";
 const char* param_sn = "input3";
 const char* param_dns1 = "input4";
 const char* param_dns2 = "input5";
+const char* param_txp = "input6";
 
 ///////////////////////////////////////////////
 ///////// Setup Transmitter Values ////////////
@@ -106,6 +138,7 @@ byte msgKey1 = 0x2a;                      // Key of outgoing messages
 byte msgKey2 = 0x56;
 byte msgCount = 0;                        // Count of outgoing messages
 byte esm = 0x00;                          // 0x00 -> OFF  0x01 -> ON
+byte byte_txpower = 0x17;
       
 unsigned long lastDiscoverTimebb = 0;              // Last send time
 unsigned long lastDiscoverTimecc = 0;              // Last send time
@@ -120,6 +153,7 @@ unsigned long lastAckTimeEnd = 0;
 unsigned long lastAnalogReadTime = 0;
 unsigned long lastTestTime = 0;
 unsigned long lastDisplayPrint = 0;
+unsigned long lastTslReadTime = 0;
 
 int defaultBrightnessDisplay = 255;   // value from 1 to 255
 int counterSend = 0;
@@ -130,7 +164,17 @@ int gpioV1, gpioV2, gpioV3, gpioV4;
 int gpioV1Map, gpioV2Map, gpioV3Map, gpioV4Map;
 int missed_bb, missed_cc, missed_dd, missed_ee;
 int buf_rssi_bb_int, buf_rssi_cc_int, buf_rssi_dd_int, buf_rssi_ee_int;
-int useIPAddress, useGWAddress, useSNAddress, useDNS1Address, useDNS2Address;
+int useIPOctet1, useIPOctet2, useIPOctet3, useIPOctet4;
+int useGWOctet1, useGWOctet2, useGWOctet3, useGWOctet4;
+int useSNOctet1, useSNOctet2, useSNOctet3, useSNOctet4;
+int useDNS1Octet1, useDNS1Octet2, useDNS1Octet3, useDNS1Octet4;
+int useDNS2Octet1, useDNS2Octet2, useDNS2Octet3, useDNS2Octet4;
+int int_txpower;
+int int_ipOctet1, int_ipOctet2, int_ipOctet3, int_ipOctet4;
+int int_gwOctet1, int_gwOctet2, int_gwOctet3, int_gwOctet4;
+int int_snOctet1, int_snOctet2, int_snOctet3, int_snOctet4;
+int int_dns1Octet1, int_dns1Octet2, int_dns1Octet3, int_dns1Octet4;
+int int_dns2Octet1, int_dns2Octet2, int_dns2Octet3, int_dns2Octet4;
 
 ///////////////////////////////////////////////
 //////////// Setup LORA Values ////////////////
@@ -167,7 +211,9 @@ bool batteryAttentionState = LOW;
 bool ethConnected = false;
 bool useSTATIC = false;
 bool useDNS = false;
+bool useTSL = false;
 bool bool_esm = false;
+bool bool_tsl = false;
 bool ethState = false;
 bool loraInit = false;
 bool sdInit = false;
@@ -178,7 +224,7 @@ bool oledInit = false;
 ///////////////////////////////////////////////
     
 // Use static ip address config
-IPAddress local_ip (192, 168, 0, 55);       //uint32_t
+IPAddress local_ip (192,168,0,50);       //uint32_t
 IPAddress gateway (192, 168, 0, 1);
 IPAddress subnet (255, 255, 255, 0);
 IPAddress dns1 (0, 1, 2, 3);
@@ -342,6 +388,16 @@ String proc_state(const String& state){
             html_state_esm = "OFF";
         }
         return html_state_esm;
+    }
+
+    if(state == "STATE_TSL"){
+        if(useTSL == true){
+            html_state_tsl = "TSL";
+        }
+        else{
+            html_state_tsl = "GPIO";
+        }
+        return html_state_tsl;
     }
 
     if(state == "STATE_VERSION"){
@@ -581,6 +637,7 @@ void sendMessage(String message) {
     LoRa.write(msgKey1);                  // add message KEY
     LoRa.write(msgKey2);                  // add message KEY
     LoRa.write(esm);                      // add energy save mode
+    LoRa.write(byte_txpower);             // add txpower
     LoRa.write(msgCount);                 // add message ID
     LoRa.write(message.length());         // add payload length
     LoRa.print(message);                  // add payload
@@ -850,18 +907,34 @@ void setup() {
     eeprom.begin("network", false);                //false mean use read/write mode
     useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
     useDNS = eeprom.getBool("dns", false);
-    useIPAddress = eeprom.getInt("ip", false);
-    useGWAddress = eeprom.getInt("gw", false);
-    useSNAddress = eeprom.getInt("sn", false);
-    useDNS1Address = eeprom.getInt("dns1", false);
-    useDNS2Address = eeprom.getInt("dns2", false);
-    //Serial.print("useSTATIC: "); Serial.print(useSTATIC);
-    //Serial.print("useDNS: "); Serial.print(useDNS);
+    useIPOctet1 = eeprom.getInt("ipOctet1", false);
+    useIPOctet2 = eeprom.getInt("ipOctet2", false);
+    useIPOctet3 = eeprom.getInt("ipOctet3", false);
+    useIPOctet4 = eeprom.getInt("ipOctet4", false);
+    useGWOctet1 = eeprom.getInt("gwOctet1", false);
+    useGWOctet2 = eeprom.getInt("gwOctet2", false);
+    useGWOctet3 = eeprom.getInt("gwOctet3", false);
+    useGWOctet4 = eeprom.getInt("gwOctet4", false);  
+    useSNOctet1 = eeprom.getInt("snOctet1", false);
+    useSNOctet2 = eeprom.getInt("snOctet2", false);
+    useSNOctet3 = eeprom.getInt("snOctet3", false);
+    useSNOctet4 = eeprom.getInt("snOctet4", false);  
+    useDNS1Octet1 = eeprom.getInt("dns1Octet1", false);
+    useDNS1Octet2 = eeprom.getInt("dns1Octet2", false);
+    useDNS1Octet3 = eeprom.getInt("dns1Octet3", false);
+    useDNS1Octet4 = eeprom.getInt("dns1Octet4", false);  
+    useDNS2Octet1 = eeprom.getInt("dns2Octet1", false);
+    useDNS2Octet2 = eeprom.getInt("dns2Octet2", false);
+    useDNS2Octet3 = eeprom.getInt("dns2Octet3", false);
+    useDNS2Octet4 = eeprom.getInt("dns2Octet4", false);  
     eeprom.end();
 
-    eeprom.begin("configuration", false);         
+    eeprom.begin("configuration", false); 
+    bool_tsl = eeprom.getBool("tsl", false);        
     bool_esm = eeprom.getBool("esm", false);
-    //Serial.print("bool_esm: "); Serial.print(bool_esm);
+    loraTxPower = eeprom.getInt("txpower", false);
+
+    //Serial.print("loraTxPower: "); Serial.println(loraTxPower);
     eeprom.end();
 
 //////////////////////////////////////////////////////////////////////
@@ -1011,6 +1084,12 @@ void setup() {
 
     ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE);
 
+    IPAddress local_ip (useIPOctet1, useIPOctet2, useIPOctet3, useIPOctet4);
+    IPAddress gateway (useGWOctet1, useGWOctet2, useGWOctet3, useGWOctet4);
+    IPAddress subnet (useSNOctet1, useSNOctet2, useSNOctet3, useSNOctet4);
+    IPAddress dns1 (useDNS1Octet1, useDNS1Octet2, useDNS1Octet3, useDNS1Octet4);
+    IPAddress dns2 (useDNS2Octet1, useDNS2Octet2, useDNS2Octet3, useDNS2Octet4);
+    
     if ((useSTATIC == true) && (useDNS = false)) {
         ETH.config(local_ip, gateway, subnet);
     }
@@ -1018,6 +1097,7 @@ void setup() {
     if ((useSTATIC == true) && (useDNS = true)) {
         ETH.config(local_ip, gateway, subnet, dns1, dns2);
     }
+    
 
 //////////////////////////////////////////////////////////////////////
 
@@ -1097,6 +1177,22 @@ void setup() {
         request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
     });
 
+    server.on("/tsl", HTTP_GET, [](AsyncWebServerRequest *request){
+        useTSL = true;
+        eeprom.begin("configuration", false);                //false mean use read/write mode
+        eeprom.putBool("tsl", bool_tsl);     
+        eeprom.end();
+        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+    });
+
+    server.on("/gpio", HTTP_GET, [](AsyncWebServerRequest *request){
+        useTSL = false;
+        eeprom.begin("configuration", false);                //false mean use read/write mode
+        eeprom.putBool("tsl", bool_tsl);     
+        eeprom.end();
+        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+    });
+
     server.on("/esm-on", HTTP_GET, [](AsyncWebServerRequest *request){
         bool_esm = true;
         if (bool_esm == true){ esm = 0x01; }
@@ -1117,61 +1213,191 @@ void setup() {
         request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
     });
 
-
-    
     server.on("/info", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/info.html", String(), false, proc_state);
     });
 
     // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
-    server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    String input_ip, input_gw, input_sn, input_dns1, input_dns2;
-    String input_param_ip, input_param_gw, input_param_sn, input_param_dns1, input_param_dns2;
+    server.on("/get-txp", HTTP_GET, [] (AsyncWebServerRequest *request) {
+        String input_txp;
+        String input_param_txp;
 
-    // GET input1 value on <ESP_IP>/get?input1=<inputMessage>
-    if (request->hasParam(param_ip)) {
-      input_ip = request->getParam(param_ip)->value();
-      input_param_ip = param_ip;
-    }
-    // GET input2 value on <ESP_IP>/get?input2=<inputMessage>
-    if (request->hasParam(param_gw)) {
-      input_gw = request->getParam(param_gw)->value();
-      input_param_gw = param_gw;
-    }
-    // GET input3 value on <ESP_IP>/get?input3=<inputMessage>
-    if (request->hasParam(param_sn)) {
-      input_sn = request->getParam(param_sn)->value();
-      input_param_sn = param_sn;
-    }
-    // GET input4 value on <ESP_IP>/get?input4=<inputMessage>
-    if (request->hasParam(param_dns1)) {
-      input_dns1 = request->getParam(param_dns1)->value();
-      input_param_dns1 = param_dns1;
-    }
-    // GET input5 value on <ESP_IP>/get?input5=<inputMessage>
-    if (request->hasParam(param_dns2)) {
-      input_dns2 = request->getParam(param_dns2)->value();
-      input_param_dns2 = param_dns2;
-    }
-    // If empty, print no message
-    if (request->hasParam("")) {
-      input_ip = "No message sent";
-      input_param_ip = "none";
-      input_gw = "No message sent";
-      input_param_gw = "none";
-      input_sn = "No message sent";
-      input_param_sn = "none";
-      input_dns1 = "No message sent";
-      input_param_dns1 = "none";
-      input_dns2 = "No message sent";
-      input_param_dns2 = "none";
-    }
-    Serial.println(input_ip);
-    Serial.println(input_gw);
-    Serial.println(input_sn);
-    Serial.println(input_dns1);
-    Serial.println(input_dns2);
-    request->send(SPIFFS, "/network.html", String(), false, proc_state);
+        // GET input6 value on <ESP_IP>/get?input6=<inputMessage>
+        if (request->hasParam(param_txp)) {
+        input_txp = request->getParam(param_txp)->value();
+        input_param_txp = param_txp;
+        }
+        // If empty, print no message
+        if (request->hasParam("")) {
+        input_txp = "No message sent";
+        input_param_txp = "none";
+        }
+        Serial.println(input_txp);
+
+        sprintf(buf_txpower, "%s", input_txp);
+        int_txpower = atoi(buf_txpower);
+
+        loraTxPower = int_txpower;
+        byte_txpower = int_txpower;
+
+        eeprom.begin("configuration", false);                //false mean use read/write mode
+        eeprom.putInt("txpower", loraTxPower);     
+        eeprom.end();
+        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);              
+        destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
+        string_destinationAddress = "bb";
+        outgoing = "con-rec?";         // Send a message
+        sendMessage(outgoing);
+        Serial.println("LORA TxD: " + outgoing);
+        delay(100);
+        destination = 0xcc;
+        string_destinationAddress = "cc";
+        outgoing = "con-rec?";         // Send a message
+        sendMessage(outgoing);
+        Serial.println("LORA TxD: " + outgoing);
+        delay(100);
+        destination = 0xdd;
+        string_destinationAddress = "dd";
+        outgoing = "con-rec?";         // Send a message
+        sendMessage(outgoing);
+        Serial.println("LORA TxD: " + outgoing);
+        delay(100);
+        destination = 0xee;
+        string_destinationAddress = "ee";
+        outgoing = "con-rec?";         // Send a message
+        sendMessage(outgoing);
+        Serial.println("LORA TxD: " + outgoing);
+        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+        delay(2000);
+        ESP.restart();
+    });
+
+    // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
+    server.on("/get-ip", HTTP_GET, [] (AsyncWebServerRequest *request) {
+        String input_ip, input_gw, input_sn, input_dns1, input_dns2;
+        String input_param_ip, input_param_gw, input_param_sn, input_param_dns1, input_param_dns2;
+
+        // GET input1 value on <ESP_IP>/get?input1=<inputMessage>
+        if (request->hasParam(param_ip)) {
+        input_ip = request->getParam(param_ip)->value();
+        input_param_ip = param_ip;
+        }
+        // GET input2 value on <ESP_IP>/get?input2=<inputMessage>
+        if (request->hasParam(param_gw)) {
+        input_gw = request->getParam(param_gw)->value();
+        input_param_gw = param_gw;
+        }
+        // GET input3 value on <ESP_IP>/get?input3=<inputMessage>
+        if (request->hasParam(param_sn)) {
+        input_sn = request->getParam(param_sn)->value();
+        input_param_sn = param_sn;
+        }
+        // GET input4 value on <ESP_IP>/get?input4=<inputMessage>
+        if (request->hasParam(param_dns1)) {
+        input_dns1 = request->getParam(param_dns1)->value();
+        input_param_dns1 = param_dns1;
+        }
+        // GET input5 value on <ESP_IP>/get?input5=<inputMessage>
+        if (request->hasParam(param_dns2)) {
+        input_dns2 = request->getParam(param_dns2)->value();
+        input_param_dns2 = param_dns2;
+        }
+        // If empty, print no message
+        if (request->hasParam("")) {
+        input_ip = "No message sent";
+        input_param_ip = "none";
+        input_gw = "No message sent";
+        input_param_gw = "none";
+        input_sn = "No message sent";
+        input_param_sn = "none";
+        input_dns1 = "No message sent";
+        input_param_dns1 = "none";
+        input_dns2 = "No message sent";
+        input_param_dns2 = "none";
+        }
+        //Serial.println(input_ip);
+        //Serial.println(input_gw);
+        //Serial.println(input_sn);
+        //Serial.println(input_dns1);
+        //Serial.println(input_dns2);
+
+        sprintf(buf_input_ip, "%s", input_ip);
+        sprintf(buf_input_gw, "%s", input_gw);
+        sprintf(buf_input_sn, "%s", input_sn);
+        sprintf(buf_input_dns1, "%s", input_dns1);
+        sprintf(buf_input_dns2, "%s", input_dns2);
+
+        char* ptr_ip = strtok(buf_input_ip, ".");
+        int_ipOctet1 = atoi(ptr_ip);
+        ptr_ip = strtok(NULL, ".");
+        int_ipOctet2 = atoi(ptr_ip);
+        ptr_ip = strtok(NULL, ".");
+        int_ipOctet3 = atoi(ptr_ip);
+        ptr_ip = strtok(NULL, ".");
+        int_ipOctet4 = atoi(ptr_ip);
+
+        char* ptr_gw = strtok(buf_input_gw, ".");
+        int_gwOctet1 = atoi(ptr_gw);
+        ptr_gw = strtok(NULL, ".");
+        int_gwOctet2 = atoi(ptr_gw);
+        ptr_gw = strtok(NULL, ".");
+        int_gwOctet3 = atoi(ptr_gw);
+        ptr_gw = strtok(NULL, ".");
+        int_gwOctet4 = atoi(ptr_gw);
+
+        char* ptr_sn = strtok(buf_input_sn, ".");
+        int_snOctet1 = atoi(ptr_sn);
+        ptr_sn = strtok(NULL, ".");
+        int_snOctet2 = atoi(ptr_sn);
+        ptr_sn = strtok(NULL, ".");
+        int_snOctet3 = atoi(ptr_sn);
+        ptr_sn = strtok(NULL, ".");
+        int_snOctet4 = atoi(ptr_sn);
+
+        char* ptr_dns1 = strtok(buf_input_dns1, ".");
+        int_dns1Octet1 = atoi(ptr_dns1);
+        ptr_dns1 = strtok(NULL, ".");
+        int_dns1Octet2 = atoi(ptr_dns1);
+        ptr_dns1 = strtok(NULL, ".");
+        int_dns1Octet3 = atoi(ptr_dns1);
+        ptr_dns1 = strtok(NULL, ".");
+        int_dns1Octet4 = atoi(ptr_dns1);
+
+        char* ptr_dns2 = strtok(buf_input_dns2, ".");
+        int_dns2Octet1 = atoi(ptr_dns2);
+        ptr_dns2 = strtok(NULL, ".");
+        int_dns2Octet2 = atoi(ptr_dns2);
+        ptr_dns2 = strtok(NULL, ".");
+        int_dns2Octet3 = atoi(ptr_dns2);
+        ptr_dns2 = strtok(NULL, ".");
+        int_dns2Octet4 = atoi(ptr_dns2);
+
+        eeprom.begin("network", false);                //false mean use read/write mode
+        eeprom.putInt("ipOctet1", int_ipOctet1);  
+        eeprom.putInt("ipOctet2", int_ipOctet2);    
+        eeprom.putInt("ipOctet3", int_ipOctet3);
+        eeprom.putInt("ipOctet4", int_ipOctet4);      
+        eeprom.putInt("gwOctet1", int_gwOctet1);  
+        eeprom.putInt("gwOctet2", int_gwOctet2);    
+        eeprom.putInt("gwOctet3", int_gwOctet3);
+        eeprom.putInt("gwOctet4", int_gwOctet4);      
+        eeprom.putInt("snOctet1", int_snOctet1);  
+        eeprom.putInt("snOctet2", int_snOctet2);    
+        eeprom.putInt("snOctet3", int_snOctet3);
+        eeprom.putInt("snOctet4", int_snOctet4);      
+        eeprom.putInt("dns1Octet1", int_dns1Octet1);  
+        eeprom.putInt("dns1Octet2", int_dns1Octet2);    
+        eeprom.putInt("dns1Octet3", int_dns1Octet3);
+        eeprom.putInt("dns1Octet4", int_dns1Octet4);      
+        eeprom.putInt("dns2Octet1", int_dns2Octet1);  
+        eeprom.putInt("dns2Octet2", int_dns2Octet2);    
+        eeprom.putInt("dns2Octet3", int_dns2Octet3);
+        eeprom.putInt("dns2Octet4", int_dns2Octet4);      
+        eeprom.end();
+
+        request->send(SPIFFS, "/network.html", String(), false, proc_state);
+        delay(2000);
+        ESP.restart();
     });
 
     server.onNotFound(notFound);
@@ -1298,8 +1524,8 @@ void loop() {
         }
         }
   
-    // Request Mode
-    if ((mode == "request") && (millis() - lastAnalogReadTime > 250)) {
+    // Request Mode GPIO
+    if ((mode == "request") && (millis() - lastAnalogReadTime > 250) && (useTSL == false)) {
 
         gpioV1 = analogRead(gpioP1);
         gpioV2 = analogRead(gpioP2);
@@ -1418,6 +1644,11 @@ void loop() {
             emptyDisplay();
         }
         lastAnalogReadTime = millis();
+    }
+
+    // Request Mode TSL
+    if ((mode == "request") && (millis() - lastTslReadTime > 250) && (useTSL == true)) {
+        lastTslReadTime = millis();
     }
 
     // Acknowledge Mode
