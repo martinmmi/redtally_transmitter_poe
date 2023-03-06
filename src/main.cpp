@@ -83,6 +83,12 @@ char buf_loraPreambleLength[8];
 const char* username = "admin";
 const char* password = "admin";
 
+const char* param_ip = "input1";
+const char* param_gw = "input2";
+const char* param_sn = "input3";
+const char* param_dns1 = "input4";
+const char* param_dns2 = "input5";
+
 ///////////////////////////////////////////////
 ///////// Setup Transmitter Values ////////////
 ///////////////////////////////////////////////
@@ -124,6 +130,7 @@ int gpioV1, gpioV2, gpioV3, gpioV4;
 int gpioV1Map, gpioV2Map, gpioV3Map, gpioV4Map;
 int missed_bb, missed_cc, missed_dd, missed_ee;
 int buf_rssi_bb_int, buf_rssi_cc_int, buf_rssi_dd_int, buf_rssi_ee_int;
+int useIPAddress, useGWAddress, useSNAddress, useDNS1Address, useDNS2Address;
 
 ///////////////////////////////////////////////
 //////////// Setup LORA Values ////////////////
@@ -806,6 +813,14 @@ void WiFiEvent(WiFiEvent_t event) {
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
+void notFound(AsyncWebServerRequest *request) {
+  request->send(SPIFFS, "/notfound.html", String(), false, proc_state);
+}
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
 void setup() {
 
     Serial.begin(115200);
@@ -835,6 +850,11 @@ void setup() {
     eeprom.begin("network", false);                //false mean use read/write mode
     useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
     useDNS = eeprom.getBool("dns", false);
+    useIPAddress = eeprom.getInt("ip", false);
+    useGWAddress = eeprom.getInt("gw", false);
+    useSNAddress = eeprom.getInt("sn", false);
+    useDNS1Address = eeprom.getInt("dns1", false);
+    useDNS2Address = eeprom.getInt("dns2", false);
     //Serial.print("useSTATIC: "); Serial.print(useSTATIC);
     //Serial.print("useDNS: "); Serial.print(useDNS);
     eeprom.end();
@@ -1021,16 +1041,6 @@ void setup() {
         request->send(SPIFFS, "/style.css", "text/css");
     });
 
-    // Route to load style.css file
-    server.on("/network/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/style.css", "text/css");
-    });
-
-    // Route to load style.css file
-    server.on("/configuration/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/style.css", "text/css");
-    });
-
     server.on("/network", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/network.html", String(), false, proc_state);
     });
@@ -1106,10 +1116,65 @@ void setup() {
         eeprom.end();
         request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
     });
+
+
     
     server.on("/info", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/info.html", String(), false, proc_state);
     });
+
+    // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
+    server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String input_ip, input_gw, input_sn, input_dns1, input_dns2;
+    String input_param_ip, input_param_gw, input_param_sn, input_param_dns1, input_param_dns2;
+
+    // GET input1 value on <ESP_IP>/get?input1=<inputMessage>
+    if (request->hasParam(param_ip)) {
+      input_ip = request->getParam(param_ip)->value();
+      input_param_ip = param_ip;
+    }
+    // GET input2 value on <ESP_IP>/get?input2=<inputMessage>
+    if (request->hasParam(param_gw)) {
+      input_gw = request->getParam(param_gw)->value();
+      input_param_gw = param_gw;
+    }
+    // GET input3 value on <ESP_IP>/get?input3=<inputMessage>
+    if (request->hasParam(param_sn)) {
+      input_sn = request->getParam(param_sn)->value();
+      input_param_sn = param_sn;
+    }
+    // GET input4 value on <ESP_IP>/get?input4=<inputMessage>
+    if (request->hasParam(param_dns1)) {
+      input_dns1 = request->getParam(param_dns1)->value();
+      input_param_dns1 = param_dns1;
+    }
+    // GET input5 value on <ESP_IP>/get?input5=<inputMessage>
+    if (request->hasParam(param_dns2)) {
+      input_dns2 = request->getParam(param_dns2)->value();
+      input_param_dns2 = param_dns2;
+    }
+    // If empty, print no message
+    if (request->hasParam("")) {
+      input_ip = "No message sent";
+      input_param_ip = "none";
+      input_gw = "No message sent";
+      input_param_gw = "none";
+      input_sn = "No message sent";
+      input_param_sn = "none";
+      input_dns1 = "No message sent";
+      input_param_dns1 = "none";
+      input_dns2 = "No message sent";
+      input_param_dns2 = "none";
+    }
+    Serial.println(input_ip);
+    Serial.println(input_gw);
+    Serial.println(input_sn);
+    Serial.println(input_dns1);
+    Serial.println(input_dns2);
+    request->send(SPIFFS, "/network.html", String(), false, proc_state);
+    });
+
+    server.onNotFound(notFound);
 
     server.begin();
     Serial.println("HTTP server started.");
