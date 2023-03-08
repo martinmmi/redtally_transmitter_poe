@@ -52,7 +52,7 @@ html {
   }
   .buttonTsl {
     display: inline-block;
-    background-color: #b76c41;
+    background-color: #b76241;
     border: none;
     border-radius: 4px;
     color: white;
@@ -64,7 +64,7 @@ html {
   }
   .buttonGpio {
     display: inline-block;
-    background-color: #508853;
+    background-color: #b78041;
     border: none;
     border-radius: 4px;
     color: white;
@@ -120,7 +120,7 @@ html {
     padding: 4px 8px;
     text-decoration: none;
     font-size: 12px;
-    width: 110px;
+    width: 180px;
     margin: 2px;
     box-sizing: border-box; 
   }

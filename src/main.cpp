@@ -110,6 +110,7 @@ char buf_loraSignalBandwidth[12];
 char buf_loraCodingRate[4];
 char buf_loraPreambleLength[8];
 char buf_txpower[4];
+char buf_connectedTallys[4];
 
 const char* username = "admin";
 const char* password = "admin";
@@ -356,8 +357,17 @@ String proc_state(const String& state){
             return bL_dd;
     }
 
-    if(state == "BL_EE"){        
-            return bL_ee;
+    if(state == "STATE_ADDRESS"){        
+            return string_localAddress;
+    }
+
+    if(state == "STATE_MODE"){        
+            return mode_s;
+    }
+
+    if(state == "STATE_CONECTEDTALLYS"){      
+            sprintf(buf_connectedTallys, "%d", counterTallys);  
+            return buf_connectedTallys;
     }
 
     if(state == "STATE_DHCP"){
@@ -404,33 +414,33 @@ String proc_state(const String& state){
             return version;
     }
 
-    sprintf(buf_loraFrequenz, "%f", loraFrequenz);
     if(state == "STATE_LORA_FREQ"){
+            sprintf(buf_loraFrequenz, "%f", loraFrequenz);
             return buf_loraFrequenz;
     }
 
-    sprintf(buf_loraTxPower, "%d", loraTxPower);
     if(state == "STATE_LORA_TXP"){
+            sprintf(buf_loraTxPower, "%d", loraTxPower);
             return buf_loraTxPower;
     }
 
-    sprintf(buf_loraSpreadingFactor, "%d", loraSpreadingFactor);
     if(state == "STATE_LORA_SF"){
+            sprintf(buf_loraSpreadingFactor, "%d", loraSpreadingFactor);
             return buf_loraSpreadingFactor;
     }
 
-    sprintf(buf_loraSignalBandwidth, "%f", loraSignalBandwidth);
     if(state == "STATE_LORA_SB"){
+            sprintf(buf_loraSignalBandwidth, "%f", loraSignalBandwidth);
             return buf_loraSignalBandwidth;
     }
 
-    sprintf(buf_loraCodingRate, "%d", loraCodingRate);
     if(state == "STATE_LORA_CR"){
+            sprintf(buf_loraCodingRate, "%d", loraCodingRate);
             return buf_loraCodingRate;
     }
 
-    sprintf(buf_loraPreambleLength, "%d", loraPreambleLength);
     if(state == "STATE_LORA_PL"){
+            sprintf(buf_loraPreambleLength, "%d", loraPreambleLength);
             return buf_loraPreambleLength;
     }
 
