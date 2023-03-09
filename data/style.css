@@ -64,7 +64,7 @@ html {
   }
   .buttonGpio {
     display: inline-block;
-    background-color: #b78041;
+    background-color: #353535;
     border: none;
     border-radius: 4px;
     color: white;
@@ -131,6 +131,7 @@ html {
     margin-right: auto;
     text-align: left;
     border-spacing: 12px 6px;
+    font-size: 1.2rem;
   }
 
   ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */

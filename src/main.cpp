@@ -695,18 +695,18 @@ void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *p
     }
 
     if (incomingMsgKey1 != msgKey1 && incomingMsgKey2 != msgKey2) {
-        Serial.println("Error: Message key is false.");
+        Serial.println("Error: Message key false.");
         return;                             // skip rest of function
     }
 
     if (incomingLength != incoming.length()) {   // check length for error
-        Serial.println("Error: Message length does not match length.");
+        Serial.println("Error: Message length false.");
         return;                             // skip rest of function
     }
 
     // if the recipient isn't this device or broadcast,
     if (recipient != localAddress && recipient != 0xff) {
-        Serial.println("This Message is not for me.");
+        Serial.println("Message not for me.");
         return;                             // skip rest of function
     }
 
@@ -944,7 +944,7 @@ void setup() {
     bool_esm = eeprom.getBool("esm", false);
     loraTxPower = eeprom.getInt("txpower", false);
 
-    //Serial.print("loraTxPower: "); Serial.println(loraTxPower);
+    Serial.print("loraTxPower: "); Serial.println(loraTxPower);
     eeprom.end();
 
 //////////////////////////////////////////////////////////////////////
@@ -1242,42 +1242,51 @@ void setup() {
         input_txp = "No message sent";
         input_param_txp = "none";
         }
-        Serial.println(input_txp);
 
         sprintf(buf_txpower, "%s", input_txp);
         int_txpower = atoi(buf_txpower);
 
-        loraTxPower = int_txpower;
-        byte_txpower = int_txpower;
+        loraTxPower = int_txpower;              //value for eeprom
+        byte_txpower = int_txpower;             //send via lora
 
         eeprom.begin("configuration", false);                //false mean use read/write mode
         eeprom.putInt("txpower", loraTxPower);     
         eeprom.end();
-        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);              
-        destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
-        string_destinationAddress = "bb";
-        outgoing = "con-rec?";         // Send a message
-        sendMessage(outgoing);
-        Serial.println("LORA TxD: " + outgoing);
-        delay(100);
-        destination = 0xcc;
-        string_destinationAddress = "cc";
-        outgoing = "con-rec?";         // Send a message
-        sendMessage(outgoing);
-        Serial.println("LORA TxD: " + outgoing);
-        delay(100);
-        destination = 0xdd;
-        string_destinationAddress = "dd";
-        outgoing = "con-rec?";         // Send a message
-        sendMessage(outgoing);
-        Serial.println("LORA TxD: " + outgoing);
-        delay(100);
-        destination = 0xee;
-        string_destinationAddress = "ee";
-        outgoing = "con-rec?";         // Send a message
-        sendMessage(outgoing);
-        Serial.println("LORA TxD: " + outgoing);
-        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+
+        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);   
+
+        if (tally_bb == HIGH){
+            destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
+            string_destinationAddress = "bb";
+            outgoing = "con-rec?";         // Send a message
+            sendMessage(outgoing);
+            Serial.println("LORA TxD: " + outgoing);
+            delay(100);
+        }
+        if (tally_cc == HIGH){
+            destination = 0xcc;
+            string_destinationAddress = "cc";
+            outgoing = "con-rec?";         // Send a message
+            sendMessage(outgoing);
+            Serial.println("LORA TxD: " + outgoing);
+            delay(100);
+        }
+        if (tally_dd == HIGH){
+            destination = 0xdd;
+            string_destinationAddress = "dd";
+            outgoing = "con-rec?";         // Send a message
+            sendMessage(outgoing);
+            Serial.println("LORA TxD: " + outgoing);
+            delay(100);
+        }
+        if (tally_ee == HIGH){
+            destination = 0xee;
+            string_destinationAddress = "ee";
+            outgoing = "con-rec?";         // Send a message
+            sendMessage(outgoing);
+            Serial.println("LORA TxD: " + outgoing);
+        }
+
         delay(2000);
         ESP.restart();
     });
