@@ -1178,6 +1178,40 @@ void setup() {
             eeprom.putBool("dhcp", useSTATIC);     
             eeprom.end();
             //Serial.print("useSTATIC: "); Serial.print(useSTATIC);
+            res = 0x01;
+
+            if (tally_bb == HIGH){
+                destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
+                string_destinationAddress = "bb";
+                outgoing = "con-rec?";         // Send a message
+                sendMessage(outgoing);
+                Serial.println("LORA TxD: " + outgoing);
+                delay(500);
+            }
+            if (tally_cc == HIGH){
+                destination = 0xcc;
+                string_destinationAddress = "cc";
+                outgoing = "con-rec?";         // Send a message
+                sendMessage(outgoing);
+                Serial.println("LORA TxD: " + outgoing);
+                delay(500);
+            }
+            if (tally_dd == HIGH){
+                destination = 0xdd;
+                string_destinationAddress = "dd";
+                outgoing = "con-rec?";         // Send a message
+                sendMessage(outgoing);
+                Serial.println("LORA TxD: " + outgoing);
+                delay(500);
+            }
+            if (tally_ee == HIGH){
+                destination = 0xee;
+                string_destinationAddress = "ee";
+                outgoing = "con-rec?";         // Send a message
+                sendMessage(outgoing);
+                Serial.println("LORA TxD: " + outgoing);
+            }
+
             request->send(SPIFFS, "/network.html", String(), false, proc_state);
             delay(2000);
             ESP.restart();
@@ -1193,6 +1227,40 @@ void setup() {
             eeprom.putBool("dhcp", useSTATIC);     
             eeprom.end();
             //Serial.print("useSTATIC: "); Serial.print(useSTATIC);
+            res = 0x01;
+
+            if (tally_bb == HIGH){
+                destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
+                string_destinationAddress = "bb";
+                outgoing = "con-rec?";         // Send a message
+                sendMessage(outgoing);
+                Serial.println("LORA TxD: " + outgoing);
+                delay(500);
+            }
+            if (tally_cc == HIGH){
+                destination = 0xcc;
+                string_destinationAddress = "cc";
+                outgoing = "con-rec?";         // Send a message
+                sendMessage(outgoing);
+                Serial.println("LORA TxD: " + outgoing);
+                delay(500);
+            }
+            if (tally_dd == HIGH){
+                destination = 0xdd;
+                string_destinationAddress = "dd";
+                outgoing = "con-rec?";         // Send a message
+                sendMessage(outgoing);
+                Serial.println("LORA TxD: " + outgoing);
+                delay(500);
+            }
+            if (tally_ee == HIGH){
+                destination = 0xee;
+                string_destinationAddress = "ee";
+                outgoing = "con-rec?";         // Send a message
+                sendMessage(outgoing);
+                Serial.println("LORA TxD: " + outgoing);
+            }
+
             request->send(SPIFFS, "/network.html", String(), false, proc_state);
             delay(2000);
             ESP.restart();
@@ -1264,7 +1332,6 @@ void setup() {
     server.on("/restart", HTTP_GET, [](AsyncWebServerRequest *request){
         if (authenticated == true) {
             res = 0x01;
-            request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
 
             if (tally_bb == HIGH){
                 destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
@@ -1272,7 +1339,7 @@ void setup() {
                 outgoing = "con-rec?";         // Send a message
                 sendMessage(outgoing);
                 Serial.println("LORA TxD: " + outgoing);
-                delay(100);
+                delay(500);
             }
             if (tally_cc == HIGH){
                 destination = 0xcc;
@@ -1280,7 +1347,7 @@ void setup() {
                 outgoing = "con-rec?";         // Send a message
                 sendMessage(outgoing);
                 Serial.println("LORA TxD: " + outgoing);
-                delay(100);
+                delay(500);
             }
             if (tally_dd == HIGH){
                 destination = 0xdd;
@@ -1288,7 +1355,7 @@ void setup() {
                 outgoing = "con-rec?";         // Send a message
                 sendMessage(outgoing);
                 Serial.println("LORA TxD: " + outgoing);
-                delay(100);
+                delay(500);
             }
             if (tally_ee == HIGH){
                 destination = 0xee;
@@ -1378,9 +1445,7 @@ void setup() {
 
             eeprom.begin("configuration", false);                //false mean use read/write mode
             eeprom.putInt("txpower", loraTxPower);     
-            eeprom.end();
-
-            request->send(SPIFFS, "/configuration.html", String(), false, proc_state);   
+            eeprom.end(); 
 
             if (tally_bb == HIGH){
                 destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
@@ -1388,7 +1453,7 @@ void setup() {
                 outgoing = "con-rec?";         // Send a message
                 sendMessage(outgoing);
                 Serial.println("LORA TxD: " + outgoing);
-                delay(100);
+                delay(500);
             }
             if (tally_cc == HIGH){
                 destination = 0xcc;
@@ -1396,7 +1461,7 @@ void setup() {
                 outgoing = "con-rec?";         // Send a message
                 sendMessage(outgoing);
                 Serial.println("LORA TxD: " + outgoing);
-                delay(100);
+                delay(500);
             }
             if (tally_dd == HIGH){
                 destination = 0xdd;
@@ -1404,7 +1469,7 @@ void setup() {
                 outgoing = "con-rec?";         // Send a message
                 sendMessage(outgoing);
                 Serial.println("LORA TxD: " + outgoing);
-                delay(100);
+                delay(500);
             }
             if (tally_ee == HIGH){
                 destination = 0xee;
@@ -1413,6 +1478,7 @@ void setup() {
                 sendMessage(outgoing);
                 Serial.println("LORA TxD: " + outgoing);
             }
+
             request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
             delay(2000);
             ESP.restart();
