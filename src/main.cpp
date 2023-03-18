@@ -376,6 +376,10 @@ String proc_state(const String& state){
             return bL_dd;
     }
 
+    if(state == "BL_EE"){        
+            return bL_ee;
+    }
+
     if(state == "STATE_ADDRESS"){        
             return string_localAddress;
     }
