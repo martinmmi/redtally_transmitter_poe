@@ -47,8 +47,8 @@ String gwOctet1, gwOctet2, gwOctet3, gwOctet4;
 String snOctet1, snOctet2, snOctet3, snOctet4;
 String dns1Octet1, dns1Octet2, dns1Octet3, dns1Octet4;
 String dns2Octet1, dns2Octet2, dns2Octet3, dns2Octet4;
-String username = "admin";
-String password = "admin";
+String username;
+String password;
 
 char buf_tx[12];
 char buf_rx[12];
@@ -130,6 +130,8 @@ const char* param_dns2 = "input5";
 const char* param_txp = "input6";
 const char* param_user = "inputUser";
 const char* param_password = "inputPassword";
+const char* param_new_user = "inputNewUser";
+const char* param_new_password = "inputNewPassword";
 
 ///////////////////////////////////////////////
 ///////// Setup Transmitter Values ////////////
@@ -474,6 +476,17 @@ String proc_state(const String& state){
     if(state == "STATE_DNS2"){
             sprintf(buf_html_dns2, "%d.%d.%d.%d", useDNS2Octet1, useDNS2Octet2, useDNS2Octet3, useDNS2Octet4);
             return buf_html_dns2;
+    }
+
+    if(state == "STATE_USERNAME"){
+            eeprom.begin("configuration", false); 
+            username = eeprom.getString("user", "");
+            eeprom.end();
+            return username;
+    }
+
+    if(state == "STATE_PASSWORD"){
+            return "&#x95;&#x95;&#x95;&#x95;&#x95;";
     }
 
   return String();
@@ -975,6 +988,8 @@ void setup() {
     bool_tsl = eeprom.getBool("tsl", false);        
     bool_esm = eeprom.getBool("esm", false);
     loraTxPower = eeprom.getInt("txpower", false);
+    username = eeprom.getString("user", "");
+    password = eeprom.getString("password", "");
 
     byte_txpower = loraTxPower;  
 
@@ -1405,6 +1420,11 @@ void setup() {
         input_password = "No message sent";
         input_param_password = "none";
         }
+        
+        eeprom.begin("configuration", false); 
+        username = eeprom.getString("user", "");
+        password = eeprom.getString("password", "");
+        eeprom.end();
     
         if (((username == input_username) && (password == input_password)) || (authenticated == true)) {
             Serial.println("Authentification Successful");
@@ -1488,6 +1508,42 @@ void setup() {
             } else{
                 request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
             }
+
+        } else {
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
+        }
+    });
+
+    // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
+    server.on("/user-change", HTTP_GET, [] (AsyncWebServerRequest *request) {
+        if (authenticated == true) {
+            String input_new_username, input_new_password;
+            String input_param_new_username, input_param_new_password;
+
+            // GET input6 value on <ESP_IP>/get?input6=<inputMessage>
+            if (request->hasParam(param_new_user)) {
+            input_new_username = request->getParam(param_new_user)->value();
+            input_param_new_username = param_new_user;
+            }
+            // GET input6 value on <ESP_IP>/get?input6=<inputMessage>
+            if (request->hasParam(param_new_password)) {
+            input_new_password = request->getParam(param_new_password)->value();
+            input_param_new_password = param_new_password;
+            }
+            // If empty, print no message
+            if (request->hasParam("")) {
+            input_new_username = "No message sent";
+            input_param_new_username = "none";
+            input_new_password = "No message sent";
+            input_param_new_password = "none";
+            }
+
+            eeprom.begin("configuration", false);                //false mean use read/write mode
+            eeprom.putString("user", input_new_username);  
+            eeprom.putString("password", input_new_password);    
+            eeprom.end(); 
+
+            request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
 
         } else {
             request->send(SPIFFS, "/login.html", String(), false, proc_state);
