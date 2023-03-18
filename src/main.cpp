@@ -149,7 +149,7 @@ byte msgKey2 = 0x56;
 byte msgCount = 0;                        // Count of outgoing messages
 byte res = 0x00;                          // 0x00 -> OFF  0x01 -> ON
 byte esm = 0x00;                          // 0x00 -> OFF  0x01 -> ON
-byte byte_txpower = 0x17;
+byte byte_txpower;
       
 unsigned long lastDiscoverTimebb = 0;              // Last send time
 unsigned long lastDiscoverTimecc = 0;              // Last send time
@@ -181,7 +181,6 @@ int useGWOctet1, useGWOctet2, useGWOctet3, useGWOctet4;
 int useSNOctet1, useSNOctet2, useSNOctet3, useSNOctet4;
 int useDNS1Octet1, useDNS1Octet2, useDNS1Octet3, useDNS1Octet4;
 int useDNS2Octet1, useDNS2Octet2, useDNS2Octet3, useDNS2Octet4;
-int int_txpower;
 int int_ipOctet1, int_ipOctet2, int_ipOctet3, int_ipOctet4;
 int int_gwOctet1, int_gwOctet2, int_gwOctet3, int_gwOctet4;
 int int_snOctet1, int_snOctet2, int_snOctet3, int_snOctet4;
@@ -193,6 +192,7 @@ int int_dns2Octet1, int_dns2Octet2, int_dns2Octet3, int_dns2Octet4;
 ///////////////////////////////////////////////
 
 int loraTxPower = 17;                   //2-20 default 17
+int loraTxPowerNew;
 int loraSpreadingFactor = 7;            //6-12 default  7
 double loraSignalBandwidth = 125E3;     //7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, 250E3, and 500E3 default 125E3
 int loraCodingRate = 5;                 //5-8 default 5
@@ -976,7 +976,8 @@ void setup() {
     bool_esm = eeprom.getBool("esm", false);
     loraTxPower = eeprom.getInt("txpower", false);
 
-    Serial.print("loraTxPower: "); Serial.println(loraTxPower);
+    byte_txpower = loraTxPower;  
+
     eeprom.end();
 
 //////////////////////////////////////////////////////////////////////
@@ -1438,12 +1439,12 @@ void setup() {
             }
 
             sprintf(buf_txpower, "%s", input_txp);
-            int_txpower = atoi(buf_txpower);
+            loraTxPowerNew = atoi(buf_txpower);
 
-            if (int_txpower != loraTxPower) {
+            if (loraTxPowerNew != loraTxPower) {
 
-                loraTxPower = int_txpower;              //value for eeprom
-                byte_txpower = int_txpower;             //send via lora
+                loraTxPower = loraTxPowerNew;              //value for eeprom
+                byte_txpower = loraTxPowerNew;             //send via lora
 
                 eeprom.begin("configuration", false);                //false mean use read/write mode
                 eeprom.putInt("txpower", loraTxPower);     
