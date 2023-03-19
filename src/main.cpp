@@ -2021,7 +2021,7 @@ void loop() {
 
             if ((incoming == "con") && (tx_adr == "bb")) {
                 Serial.println("LORA RxD: " + incoming);
-                if (tally_bb_init == LOW) {
+                if (tally_bb_init == LOW || tally_bb == LOW) {
                 counterTallys++;
                 }
                 tally_bb = HIGH;
@@ -2040,7 +2040,7 @@ void loop() {
             if (millis() - lastControlTime > 3000) {
                 missed_bb++;
             
-                if (missed_bb >= 2) {
+                if (missed_bb >= 2 && tally_bb == HIGH) {
                     tally_bb = LOW;
                     counterTallys--;
                 }
@@ -2070,7 +2070,7 @@ void loop() {
       
             if ((incoming == "con") && (tx_adr == "cc")) {
                 Serial.println("LORA RxD: " + incoming);
-                if (tally_cc_init == LOW) {
+                if (tally_cc_init == LOW || tally_cc == LOW) {
                 counterTallys++;
                 }
                 tally_cc = HIGH;
@@ -2089,7 +2089,7 @@ void loop() {
             if (millis() - lastControlTime > 3000) {
                 missed_cc++;
                 
-                if (missed_cc >= 2) {
+                if (missed_cc >= 2 && tally_cc == HIGH) {
                 tally_cc = LOW;
                 counterTallys--;
                 }
@@ -2119,7 +2119,7 @@ void loop() {
             
             if ((incoming == "con") && (tx_adr == "dd")) {
                 Serial.println("LORA RxD: " + incoming);
-                if (tally_dd_init == LOW) {
+                if (tally_dd_init == LOW || tally_dd == LOW) {
                 counterTallys++;
                 }
                 tally_dd = HIGH;
@@ -2138,7 +2138,7 @@ void loop() {
             if (millis() - lastControlTime > 3000) {
                 missed_dd++;
                 
-                if (missed_dd >= 2) {
+                if (missed_dd >= 2 && tally_dd == HIGH) {
                 tally_dd = LOW;
                 counterTallys--;
                 }
@@ -2168,7 +2168,7 @@ void loop() {
             
             if ((incoming == "con") && (tx_adr == "ee")) {
                 Serial.println("LORA RxD: " + incoming);
-                if (tally_ee_init == LOW) {
+                if (tally_ee_init == LOW || tally_ee == LOW) {
                 counterTallys++;
                 }
                 tally_ee = HIGH;
@@ -2187,7 +2187,7 @@ void loop() {
             if (millis() - lastControlTime > 3000) {
                 missed_ee++;
                 
-                if (missed_ee >= 2) {
+                if (missed_ee >= 2 && tally_ee == HIGH) {
                 tally_ee = LOW;
                 counterTallys--;
                 }

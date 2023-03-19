@@ -115,7 +115,7 @@
 
     <p>RESTART SYSTEM:</p>
 
-    <p><a href="/restart"><button class="buttonRestart" onclick="checker()" class="btn btn default">RESTART</button></a></p>
+    <p><a href="/restart"><button class="buttonRestart" onclick="checkerRestart()" class="btn btn default">RESTART</button></a></p>
 
     <br>
     <br>
@@ -138,7 +138,7 @@
     <br>
 
     <script>function checker() {var result = confirm('Are you sure?'); if (result == false) {event.preventDefault();}}</script>
-    <script>function checkerRestart() {var result = confirm('Restart required. Are you sure?'); if (result == false) {event.preventDefault();}}</script>
+    <script>function checkerRestart() {var result = confirm('RESTART REQUIRED. Set the values and send a control restart message to receivers. Are you sure?'); if (result == false) {event.preventDefault();}}</script>
     <script src="popup.js"></script>
     
   </body>
