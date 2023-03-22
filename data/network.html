@@ -30,8 +30,39 @@
         </td>
       </tr>
     </table>
-    
     <br> 
+
+    <p>WLAN: <strong> %STATE_WLAN%</strong></p>
+
+    <table>
+      <tr>
+        <td>
+          <a href="/wlan-on"><button class="buttonOn" onclick="checkerWlan()" class="btn btn default">ON</button></a>
+        </td>
+        <td> 
+          <a href="/wlan-off"><button class="buttonOff">OFF</button></a>
+        </td>
+      </tr>
+    </table>
+    <br>
+
+    <p>WLAN CREDENTIALS:</p>
+
+    <form action="/wlan-change">
+      <table>
+        <tr>
+          <td align=right>SSID:</td>
+          <td align=left><input class="field" type="text" name="inputSSID" placeholder="%STATE_SSID%"></td>
+        </tr>
+        <tr>
+          <td align=right>PASSWORD:</td>
+          <td align=left><input class="field" type="text" name="inputWLANPASSWORD" placeholder="%STATE_WLANPASSWORD%"></td>
+        </tr>
+      </table>
+      <br>
+      <input class="buttonSubmit" type="submit" value="Submit" onclick="checker()" class="btn btn default">
+    </form>
+    <br>
 
     <p>DHCP: <strong> %STATE_DHCP%</strong></p>
 
@@ -94,6 +125,7 @@
 
     <script>function checker() {var result = confirm('Are you sure?'); if (result == false) {event.preventDefault();}}</script>
     <script>function checkerRestart() {var result = confirm('RESTART REQUIRED. Set the values and restart the transmitter. Are you sure?'); if (result == false) {event.preventDefault();}}</script>
+    <script>function checkerWlan() {var result = confirm('Are the WLAN CREDENTIALS right?'); if (result == false) {event.preventDefault();}}</script>
     <script src="popup.js"></script>
 
   </body>

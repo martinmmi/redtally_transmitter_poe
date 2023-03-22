@@ -15,6 +15,7 @@
 #include <SPIFFS.h>                     //lib for filesystem
 #include <ESPAsyncWebServer.h>
 #include <ESPmDNS.h>
+#include <WiFi.h>
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -28,48 +29,27 @@ String mode = "discover";
 String mode_s = "dis";
 String name_html = "REDTALLY";              // Device Name
 String name = "REDTALLY Transmitter";       // Device Name
-String version = "T0.01";                   // Frimeware Version
-String bb = "bb";
-String cc = "cc";
-String dd = "dd";
-String ee = "ee";
-String lost = "x";
-String rx_adr, tx_adr, incoming, outgoing, rssi, bL, snr;
+String version = "T0.02";                   // Frimeware Version
+String rx_adr, tx_adr, rssi, bL;
 String tx_adr_bb, tx_adr_cc, tx_adr_dd, tx_adr_ee;
-String incoming_bb, incoming_cc, incoming_dd, incoming_ee;
 String rssi_bb, rssi_cc, rssi_dd, rssi_ee;
 String bL_bb, bL_cc, bL_dd, bL_ee;
 String html_state_bb, html_state_cc, html_state_dd, html_state_ee;
-String html_state_dhcp, html_state_dns, html_state_esm, html_state_tsl;
+String html_state_dhcp, html_state_wlan, html_state_dns, html_state_esm, html_state_tsl;
 String html_state_ip, html_state_gw, html_state_snm, html_state_dns1, html_state_dns2;
 String ipOctet1, ipOctet2, ipOctet3, ipOctet4;
 String gwOctet1, gwOctet2, gwOctet3, gwOctet4;
 String snOctet1, snOctet2, snOctet3, snOctet4;
 String dns1Octet1, dns1Octet2, dns1Octet3, dns1Octet4;
 String dns2Octet1, dns2Octet2, dns2Octet3, dns2Octet4;
-String username;
-String password;
+String username = "admin";                  // default Values if the eeprom is empty
+String password = "admin";
+String ssid = "mySSID";
+String wifipassword = "myPASSWORD";
 
-char buf_tx[12];
-char buf_rx[12];
-char buf_bb[3];
-char buf_cc[3];
-char buf_dd[3];
-char buf_ee[3];
-char buf_lost[2];
 char buf_version[5];
 char buf_localAddress[5];
 char buf_mode[4];
-char buf_rxAdr[5];
-char buf_txAdr[5];
-char buf_rssi_bb[4];
-char buf_rssi_cc[4];
-char buf_rssi_dd[4];
-char buf_rssi_ee[4];
-char buf_bL_bb[4];
-char buf_bL_cc[4];
-char buf_bL_dd[4];
-char buf_bL_ee[4];
 char buf_ip[16];
 char buf_gw[16];
 char buf_sn[16];
@@ -132,27 +112,31 @@ const char* param_user = "inputUser";
 const char* param_password = "inputPassword";
 const char* param_new_user = "inputNewUser";
 const char* param_new_password = "inputNewPassword";
+const char* param_ssid = "inputSSID";
+const char* param_wifipassword = "inputWLANPASSWORD";
+
 
 ///////////////////////////////////////////////
 ///////// Setup Transmitter Values ////////////
 ///////////////////////////////////////////////
 
-byte localAddress = 0xaa;                 // Address of this device  
-String string_localAddress = "aa";                                    
-byte destination = 0xff;                  // Destination to send to              
-String string_destinationAddress = "ff";            
+byte localAddress = 0xaa;                 // Address of this device                         
+byte destination = 0xff;                  // Destination to send to                       
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
 
-byte msgKey1 = 0x2a;                      // Key of outgoing messages
+byte msgKey1 = 0x2a;                          // Key of outgoing messages
 byte msgKey2 = 0x56;
-byte msgCount = 0;                        // Count of outgoing messages
-byte res = 0x00;                          // 0x00 -> OFF  0x01 -> ON
-byte esm = 0x00;                          // 0x00 -> OFF  0x01 -> ON
-byte byte_txpower;
-      
+byte resFlag = 0x00;                          // 0x00 -> OFF  0x01 -> ON
+byte esmFlag = 0x00;                          // 0x00 -> OFF  0x01 -> ON
+byte transmissionPower;
+byte receiverMode = 0x00;                     // 0x00 -> NOTHING        0x01 -> DISCOVER       0x02 -> OFFER       0x03 -> REQUEST     0x04 -> ACKNOWLEDGE      0x05 -> CONTROL
+byte receiverState = 0x00;                    // 0x00 -> OFF            0x01 -> ON
+byte receiverColor = 0x00;                    // 0x00 -> OFF            0x01 -> RED            0x02 -> GREEN       0x03 -> AMBER
+byte msgCount = 0;                            // Count of outgoing messages
+
 unsigned long lastDiscoverTimebb = 0;              // Last send time
 unsigned long lastDiscoverTimecc = 0;              // Last send time
 unsigned long lastDiscoverTimedd = 0;              // Last send time
@@ -164,7 +148,6 @@ unsigned long lastControlTime = 0;
 unsigned long lastAckTime = 0;      
 unsigned long lastAckTimeEnd = 0;      
 unsigned long lastAnalogReadTime = 0;
-unsigned long lastTestTime = 0;
 unsigned long lastDisplayPrint = 0;
 unsigned long lastTslReadTime = 0;
 unsigned long lastAuthentication = 0;
@@ -177,7 +160,6 @@ int gpioP1 = 36, gpioP2 = 39, gpioP3 = 34, gpioP4 = 35;
 int gpioV1, gpioV2, gpioV3, gpioV4;
 int gpioV1Map, gpioV2Map, gpioV3Map, gpioV4Map;
 int missed_bb, missed_cc, missed_dd, missed_ee;
-int buf_rssi_bb_int, buf_rssi_cc_int, buf_rssi_dd_int, buf_rssi_ee_int;
 int useIPOctet1, useIPOctet2, useIPOctet3, useIPOctet4;
 int useGWOctet1, useGWOctet2, useGWOctet3, useGWOctet4;
 int useSNOctet1, useSNOctet2, useSNOctet3, useSNOctet4;
@@ -193,7 +175,7 @@ int int_dns2Octet1, int_dns2Octet2, int_dns2Octet3, int_dns2Octet4;
 //////////// Setup LORA Values ////////////////
 ///////////////////////////////////////////////
 
-int loraTxPower = 17;                   //2-20 default 17
+int loraTxPower = 17;                   //2-20 default if eeprom is empty 17
 int loraTxPowerNew;
 int loraSpreadingFactor = 7;            //6-12 default  7
 double loraSignalBandwidth = 125E3;     //7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, 250E3, and 500E3 default 125E3
@@ -224,6 +206,7 @@ bool batteryAttention = LOW;
 bool batteryAttentionState = LOW;
 bool ethConnected = false;
 bool useSTATIC = false;
+bool useWLAN = false;
 bool useTSL = false;
 bool bool_res = false;
 bool bool_esm = false;
@@ -234,17 +217,6 @@ bool sdInit = false;
 bool oledInit = false;
 bool authenticated = false;
 bool error = false;
-
-///////////////////////////////////////////////
-/////////// Setup Network Values //////////////
-///////////////////////////////////////////////
-    
-// Use static ip address config
-IPAddress local_ip (192,168,0,50);       //uint32_t
-IPAddress gateway (192, 168, 0, 1);
-IPAddress subnet (255, 255, 255, 0);
-IPAddress dns1 (0, 1, 2, 3);
-IPAddress dns2 (0, 1, 2, 3);
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -276,23 +248,16 @@ IPAddress dns2 (0, 1, 2, 3);
 #define SD_SCLK                             14
 #define SD_CS                               13
 
-#define image_width                         32  //Bitmap Declaration
-#define image_height                        32
-#define loadWidth                           50
+#define loadWidth                           50  //Bitmap Declaration
 #define loadHeight                          50
 #define logoWidth                          128
 #define logoHeight                          64
 #define loraWidth                          128
 #define loraHeight                          64
-#define batteryWidth                        29
-#define batteryHeight                       15
-#define signalWidth                         21
-#define signalHeight                        18
 #define lineWidth                            2
 #define lineHeight                          10
 
 U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/ DISPLAY_CS, /* dc=*/ DISPLAY_MISO, /* reset=*/ DISPLAY_RST);
-//U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 22, /* data=*/ 21);   // ESP32 Thing, HW I2C with pin remapping
 
 AsyncWebServer server(80);
 
@@ -381,7 +346,7 @@ String proc_state(const String& state){
     }
 
     if(state == "STATE_ADDRESS"){        
-            return string_localAddress;
+            return "aa";
     }
 
     if(state == "STATE_MODE"){        
@@ -401,6 +366,27 @@ String proc_state(const String& state){
             html_state_dhcp = "ON";
         }
         return html_state_dhcp;
+    }
+
+    if(state == "STATE_WLAN"){
+        if(useWLAN == true){
+            html_state_wlan = "ON";
+        }
+        else{
+            html_state_wlan = "OFF";
+        }
+        return html_state_wlan;
+    }
+
+    if(state == "STATE_SSID"){
+        eeprom.begin("network", false); 
+        ssid = eeprom.getString("ssid", ssid);
+        eeprom.end();
+        return ssid;
+    }
+
+    if(state == "STATE_WLANPASSWORD"){
+        return "&#x95;&#x95;&#x95;&#x95;&#x95;&#x95;&#x95;&#x95;&#x95;&#x95;";
     }
 
     if(state == "STATE_ESM"){
@@ -484,7 +470,7 @@ String proc_state(const String& state){
 
     if(state == "STATE_USERNAME"){
             eeprom.begin("configuration", false); 
-            username = eeprom.getString("user", "");
+            username = eeprom.getString("user", username);
             eeprom.end();
             return username;
     }
@@ -689,70 +675,71 @@ void closeSPI_DISPLAY() {
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
-void sendMessage(String message) {
+void sendMessage() {
     LoRa.beginPacket();                   // start packet
     LoRa.write(destination);              // add destination address
     LoRa.write(localAddress);             // add sender address
     LoRa.write(msgKey1);                  // add message KEY
     LoRa.write(msgKey2);                  // add message KEY
-    LoRa.write(res);                      // add restart
-    LoRa.write(esm);                      // add energy save mode
-    LoRa.write(byte_txpower);             // add txpower
+    LoRa.write(resFlag);                  // add restart
+    LoRa.write(esmFlag);                  // add energy save mode
+    LoRa.write(transmissionPower);        // add txpower
+    LoRa.write(receiverMode);             // add led color
+    LoRa.write(receiverState);            // add led color
+    LoRa.write(receiverColor);            // add led color
     LoRa.write(msgCount);                 // add message ID
-    LoRa.write(message.length());         // add payload length
-    LoRa.print(message);                  // add payload
     LoRa.endPacket();                     // finish packet and send it
     msgCount++;                           // increment message ID
+
+    Serial.print("DST: "); Serial.print(destination);
+    Serial.print(" SOURCE: "); Serial.print(localAddress);
+    Serial.print(" MSGKEY1: "); Serial.print(msgKey1);
+    Serial.print(" MSGKEY2: "); Serial.print(msgKey2);
+    Serial.print(" RESFLAG: "); Serial.print(resFlag);
+    Serial.print(" ESMFLAG: "); Serial.print(esmFlag);
+    Serial.print(" TXPOWER: "); Serial.print(transmissionPower);
+    Serial.print(" RMODE: "); Serial.print(receiverMode);
+    Serial.print(" RSTATE: "); Serial.print(receiverState);
+    Serial.print(" RCOLOR: "); Serial.print(receiverColor);
+    Serial.print(" MSGCOUNT: "); Serial.println(msgCount);
+
 }
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
-void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *ptr_incoming, String *ptr_rssi, String *ptr_bL, String *ptr_snr) { 
+void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *ptr_rssi, String *ptr_bL, byte *ptr_mode, byte *ptr_state, byte *ptr_color) { 
     if (packetSize == 0) return;          // if there's no packet, return
 
     //Clear the variables
     *ptr_rx_adr = "";
     *ptr_tx_adr = "";
-    *ptr_incoming = "";
     *ptr_rssi = "";
     *ptr_bL = "";
-    *ptr_snr = "";
+    *ptr_mode = 0x00;
+    *ptr_state = 0x00;
+    *ptr_color = 0x00;
 
-    string_destinationAddress = "";
     rx_adr = "";
-    outgoing = "";
     tx_adr = "";
-    incoming = "";
     rssi = "";
     bL = "";
-    snr = "";
+    receiverMode = 0x00;
+    receiverState = 0x00;
+    receiverColor = 0x00;
 
     // read packet header bytes:
     int recipient = LoRa.read();          // recipient address
     byte sender = LoRa.read();            // sender address
     byte incomingMsgKey1 = LoRa.read();   // incoming msg KEY1
     byte incomingMsgKey2 = LoRa.read();   // incoming msg KEY2
-    byte byte_rssi = LoRa.read();         // incoming byte_rssi
-    //byte byte_snr = LoRa.read();          // incoming byte_snr
-    byte byte_bL = LoRa.read();           // incoming byte_bL
+    byte incomingRSSI = LoRa.read();      // incoming incomingRSSI
+    byte incomingBL = LoRa.read();        // incoming incomingBL
+    byte incomingMode = LoRa.read();      
+    byte incomingState = LoRa.read();     
+    byte incomingColor = LoRa.read();   
     byte incomingMsgId = LoRa.read();     // incoming msg ID
-    byte incomingLength = LoRa.read();    // incoming msg length
-
-    while (LoRa.available()) {
-        incoming += (char)LoRa.read();
-    }
-
-    if (incomingMsgKey1 != msgKey1 && incomingMsgKey2 != msgKey2) {
-        Serial.println("Error: Message key false.");
-        return;                             // skip rest of function
-    }
-
-    if (incomingLength != incoming.length()) {   // check length for error
-        Serial.println("Error: Message length false.");
-        return;                             // skip rest of function
-    }
 
     // if the recipient isn't this device or broadcast,
     if (recipient != localAddress && recipient != 0xff) {
@@ -760,12 +747,18 @@ void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *p
         return;                             // skip rest of function
     }
 
+    if (incomingMsgKey1 != msgKey1 && incomingMsgKey2 != msgKey2) {
+        Serial.println("Error: Message key false.");
+        return;                             // skip rest of function
+    }
+
     *ptr_rx_adr = String(recipient, HEX);
     *ptr_tx_adr = String(sender, HEX);
-    *ptr_incoming = incoming;
-    *ptr_rssi = String(byte_rssi - 256);
-    *ptr_bL = String(byte_bL);
-    *ptr_snr = String(LoRa.packetSnr());
+    *ptr_rssi = String(incomingRSSI - 256);
+    *ptr_bL = String(incomingBL);
+    *ptr_mode = (incomingMode);
+    *ptr_state = (incomingState);
+    *ptr_color = (incomingColor);
 
     return;
 }
@@ -786,14 +779,13 @@ String convertAddress(IPAddress address)
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
-void emptyDisplay() {
-    string_destinationAddress = "";
+void clearValues() {
     rx_adr = "";
-    outgoing = "";
     tx_adr = "";
-    incoming = "";
     rssi = "";
-    snr = "";
+    receiverMode = 0x00;
+    receiverState = 0x00;
+    receiverColor = 0x00;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -801,20 +793,6 @@ void emptyDisplay() {
 //////////////////////////////////////////////////////////////////////
 
 void printDisplay() {   
-
-    sprintf(buf_bb, "%s", bb);
-    sprintf(buf_cc, "%s", cc);
-    sprintf(buf_dd, "%s", dd);
-    sprintf(buf_ee, "%s", ee);
-    sprintf(buf_lost, "%s", lost);
-    sprintf(buf_rssi_bb, "%s", rssi_bb);
-    sprintf(buf_rssi_cc, "%s", rssi_cc);
-    sprintf(buf_rssi_dd, "%s", rssi_dd);
-    sprintf(buf_rssi_ee, "%s", rssi_ee);
-    sprintf(buf_bL_bb, "%s", bL_bb);
-    sprintf(buf_bL_cc, "%s", bL_cc);
-    sprintf(buf_bL_dd, "%s", bL_dd);
-    sprintf(buf_bL_ee, "%s", bL_ee);
     
     if (ethConnected == true) {
         String MyIpAddress = convertAddress(ETH.localIP());
@@ -834,11 +812,6 @@ void printDisplay() {
 
     sprintf(buf_localAddress, "%x", localAddress);          // byte
     sprintf(buf_mode, "%s", mode_s);                        // string  //%d for int
-
-    buf_rssi_bb_int = atoi(buf_rssi_bb);
-    buf_rssi_cc_int = atoi(buf_rssi_cc);
-    buf_rssi_dd_int = atoi(buf_rssi_dd);
-    buf_rssi_ee_int = atoi(buf_rssi_ee);
 
     u8g2.clearBuffer();					      // clear the internal memory
     
@@ -878,9 +851,6 @@ void printDisplay() {
         u8g2.setDrawColor(0);
         u8g2.drawBox(0,35,80,40);
     }
-
-    //u8g2.drawStr(0,54,buf_ls);
-    //u8g2.drawStr(30,54,"Mbps");
     
     u8g2.sendBuffer();
 
@@ -938,6 +908,71 @@ void notFound(AsyncWebServerRequest *request) {
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
+void startWIFI() {
+
+    eeprom.begin("network", false); 
+    ssid = eeprom.getString("ssid", ssid);
+    wifipassword = eeprom.getString("wifipassword", wifipassword);
+    eeprom.end();
+
+    const char* char_ssid = ssid.c_str();                           //convert string to char
+    const char* char_wifipassword = wifipassword.c_str();
+    const char* char_name_html = name_html.c_str();
+
+    WiFi.setHostname(char_name_html);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(char_ssid, char_wifipassword);
+    Serial.println("Connecting to WIFI.");
+    int tryConnectWLAN = 0;
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(1000);
+        tryConnectWLAN++;
+        if (tryConnectWLAN == 3){
+            tryConnectWLAN = 0;
+            break;
+        }
+    }
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("Could not connect to WIFI.");
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.print("WIFI MAC: "); Serial.print(WiFi.macAddress()); Serial.print(", IPv4: "); Serial.println(WiFi.localIP());
+    }
+}
+
+void endWIFI() {
+    WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+    Serial.println("Diconnected from WIFI.");
+}
+
+void scanWIFI() {
+    Serial.println("Scan WIFI.");
+    int n = WiFi.scanNetworks();
+    Serial.println("Scan done.");
+    if (n == 0) {
+        Serial.println("No WIFI networks founded.");
+    } else {
+        Serial.print(n);
+        Serial.println("Networks founded: ");
+        for (int i = 0; i < n; ++i) {
+        // Print SSID and RSSI for each network found
+        Serial.print(i + 1);
+        Serial.print(": ");
+        Serial.print(WiFi.SSID(i));
+        Serial.print(" (");
+        Serial.print(WiFi.RSSI(i));
+        Serial.print(")");
+        Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
+        delay(10);
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
 void setup() {
 
     Serial.begin(115200);
@@ -966,36 +1001,38 @@ void setup() {
 
     eeprom.begin("network", false);                //false mean use read/write mode
     useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
-    useIPOctet1 = eeprom.getInt("ipOctet1", false);
-    useIPOctet2 = eeprom.getInt("ipOctet2", false);
-    useIPOctet3 = eeprom.getInt("ipOctet3", false);
-    useIPOctet4 = eeprom.getInt("ipOctet4", false);
-    useGWOctet1 = eeprom.getInt("gwOctet1", false);
-    useGWOctet2 = eeprom.getInt("gwOctet2", false);
-    useGWOctet3 = eeprom.getInt("gwOctet3", false);
-    useGWOctet4 = eeprom.getInt("gwOctet4", false);  
-    useSNOctet1 = eeprom.getInt("snOctet1", false);
-    useSNOctet2 = eeprom.getInt("snOctet2", false);
-    useSNOctet3 = eeprom.getInt("snOctet3", false);
-    useSNOctet4 = eeprom.getInt("snOctet4", false);  
-    useDNS1Octet1 = eeprom.getInt("dns1Octet1", false);
-    useDNS1Octet2 = eeprom.getInt("dns1Octet2", false);
-    useDNS1Octet3 = eeprom.getInt("dns1Octet3", false);
-    useDNS1Octet4 = eeprom.getInt("dns1Octet4", false);  
-    useDNS2Octet1 = eeprom.getInt("dns2Octet1", false);
-    useDNS2Octet2 = eeprom.getInt("dns2Octet2", false);
-    useDNS2Octet3 = eeprom.getInt("dns2Octet3", false);
-    useDNS2Octet4 = eeprom.getInt("dns2Octet4", false);  
+    ssid = eeprom.getString("ssid", ssid);
+    wifipassword = eeprom.getString("wifipassword", wifipassword);
+    useIPOctet1 = eeprom.getInt("ipOctet1", 0);
+    useIPOctet2 = eeprom.getInt("ipOctet2", 0);
+    useIPOctet3 = eeprom.getInt("ipOctet3", 0);
+    useIPOctet4 = eeprom.getInt("ipOctet4", 0);
+    useGWOctet1 = eeprom.getInt("gwOctet1", 0);
+    useGWOctet2 = eeprom.getInt("gwOctet2", 0);
+    useGWOctet3 = eeprom.getInt("gwOctet3", 0);
+    useGWOctet4 = eeprom.getInt("gwOctet4", 0);  
+    useSNOctet1 = eeprom.getInt("snOctet1", 0);
+    useSNOctet2 = eeprom.getInt("snOctet2", 0);
+    useSNOctet3 = eeprom.getInt("snOctet3", 0);
+    useSNOctet4 = eeprom.getInt("snOctet4", 0);  
+    useDNS1Octet1 = eeprom.getInt("dns1Octet1", 1);
+    useDNS1Octet2 = eeprom.getInt("dns1Octet2", 1);
+    useDNS1Octet3 = eeprom.getInt("dns1Octet3", 1);
+    useDNS1Octet4 = eeprom.getInt("dns1Octet4", 1);  
+    useDNS2Octet1 = eeprom.getInt("dns2Octet1", 2);
+    useDNS2Octet2 = eeprom.getInt("dns2Octet2", 2);
+    useDNS2Octet3 = eeprom.getInt("dns2Octet3", 2);
+    useDNS2Octet4 = eeprom.getInt("dns2Octet4", 2);
     eeprom.end();
 
     eeprom.begin("configuration", false); 
     bool_tsl = eeprom.getBool("tsl", false);        
     bool_esm = eeprom.getBool("esm", false);
-    loraTxPower = eeprom.getInt("txpower", false);
-    username = eeprom.getString("user", "");
-    password = eeprom.getString("password", "");
+    loraTxPower = eeprom.getInt("txpower", loraTxPower);            //if the eeprom is never written, then give the default value back
+    username = eeprom.getString("user", username);
+    password = eeprom.getString("password", password);
 
-    byte_txpower = loraTxPower;  
+    transmissionPower = loraTxPower;  
 
     eeprom.end();
 
@@ -1146,17 +1183,17 @@ void setup() {
 
     ETH.begin(ETH_ADDR, ETH_POWER_PIN, ETH_MDC_PIN, ETH_MDIO_PIN, ETH_TYPE, ETH_CLK_MODE);
 
-    IPAddress local_ip (useIPOctet1, useIPOctet2, useIPOctet3, useIPOctet4);
+    IPAddress local_IP (useIPOctet1, useIPOctet2, useIPOctet3, useIPOctet4);
     IPAddress gateway (useGWOctet1, useGWOctet2, useGWOctet3, useGWOctet4);
     IPAddress subnet (useSNOctet1, useSNOctet2, useSNOctet3, useSNOctet4);
-    IPAddress dns1 (useDNS1Octet1, useDNS1Octet2, useDNS1Octet3, useDNS1Octet4);
-    IPAddress dns2 (useDNS2Octet1, useDNS2Octet2, useDNS2Octet3, useDNS2Octet4);
+    IPAddress primaryDNS (useDNS1Octet1, useDNS1Octet2, useDNS1Octet3, useDNS1Octet4);
+    IPAddress secondaryDNS (useDNS2Octet1, useDNS2Octet2, useDNS2Octet3, useDNS2Octet4);
     
     if (useSTATIC == true) {
-        ETH.config(local_ip, gateway, subnet, dns1, dns2);
+        ETH.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS);
+        WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS);
     }
     
-
 //////////////////////////////////////////////////////////////////////
 
     if (MDNS.begin("redtally")) {
@@ -1198,40 +1235,36 @@ void setup() {
             eeprom.putBool("dhcp", useSTATIC);     
             eeprom.end();
             //Serial.print("useSTATIC: "); Serial.print(useSTATIC);
-            res = 0x01;
+            resFlag = 0x01;
 
             if (tally_bb == HIGH){
                 destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
-                string_destinationAddress = "bb";
-                outgoing = "con-rec?";         // Send a message
-                sendMessage(outgoing);
-                Serial.println("LORA TxD: " + outgoing);
+                receiverMode = 0x05;            // Send a message
+                sendMessage();         
+                Serial.println("LORA TxD: 0x05 CONTROL");
                 delay(500);
             }
             if (tally_cc == HIGH){
                 destination = 0xcc;
-                string_destinationAddress = "cc";
-                outgoing = "con-rec?";         // Send a message
-                sendMessage(outgoing);
-                Serial.println("LORA TxD: " + outgoing);
+                receiverMode = 0x05;
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
                 delay(500);
             }
             if (tally_dd == HIGH){
                 destination = 0xdd;
-                string_destinationAddress = "dd";
-                outgoing = "con-rec?";         // Send a message
-                sendMessage(outgoing);
-                Serial.println("LORA TxD: " + outgoing);
+                receiverMode = 0x05;
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
                 delay(500);
             }
             if (tally_ee == HIGH){
                 destination = 0xee;
-                string_destinationAddress = "ee";
-                outgoing = "con-rec?";         // Send a message
-                sendMessage(outgoing);
-                Serial.println("LORA TxD: " + outgoing);
+                receiverMode = 0x05;
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
             }
-
+            resFlag = 0x00;
             request->send(SPIFFS, "/network.html", String(), false, proc_state);
             delay(2000);
             ESP.restart();
@@ -1247,43 +1280,99 @@ void setup() {
             eeprom.putBool("dhcp", useSTATIC);     
             eeprom.end();
             //Serial.print("useSTATIC: "); Serial.print(useSTATIC);
-            res = 0x01;
+            resFlag = 0x01;
 
             if (tally_bb == HIGH){
                 destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
-                string_destinationAddress = "bb";
-                outgoing = "con-rec?";         // Send a message
-                sendMessage(outgoing);
-                Serial.println("LORA TxD: " + outgoing);
+                receiverMode = 0x05;
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
                 delay(500);
             }
             if (tally_cc == HIGH){
                 destination = 0xcc;
-                string_destinationAddress = "cc";
-                outgoing = "con-rec?";         // Send a message
-                sendMessage(outgoing);
-                Serial.println("LORA TxD: " + outgoing);
+                receiverMode = 0x05;
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
                 delay(500);
             }
             if (tally_dd == HIGH){
                 destination = 0xdd;
-                string_destinationAddress = "dd";
-                outgoing = "con-rec?";         // Send a message
-                sendMessage(outgoing);
-                Serial.println("LORA TxD: " + outgoing);
+                receiverMode = 0x05;
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
                 delay(500);
             }
             if (tally_ee == HIGH){
                 destination = 0xee;
-                string_destinationAddress = "ee";
-                outgoing = "con-rec?";         // Send a message
-                sendMessage(outgoing);
-                Serial.println("LORA TxD: " + outgoing);
+                receiverMode = 0x05;
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
             }
-
+            resFlag = 0x00;
             request->send(SPIFFS, "/network.html", String(), false, proc_state);
             delay(2000);
             ESP.restart();
+        } else {
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
+        }
+    });
+
+    server.on("/wlan-on", HTTP_GET, [](AsyncWebServerRequest *request){
+        if (authenticated == true) {
+            useWLAN = true;
+
+            startWIFI();
+          
+            request->send(SPIFFS, "/network.html", String(), false, proc_state);
+        } else {
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
+        }
+    });
+
+    server.on("/wlan-off", HTTP_GET, [](AsyncWebServerRequest *request){
+        if (authenticated == true) {
+            useWLAN = false;
+
+            endWIFI();
+            
+            request->send(SPIFFS, "/network.html", String(), false, proc_state);
+        } else {
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
+        }
+    });
+
+    // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
+    server.on("/wlan-change", HTTP_GET, [] (AsyncWebServerRequest *request) {
+        if (authenticated == true) {
+            String input_ssid, input_wlanpassword;
+            String input_param_ssid, input_param_wlanpassword;
+
+            if (request->hasParam(param_ssid)) {
+            input_ssid = request->getParam(param_ssid)->value();
+            input_param_ssid = param_ssid;
+            }
+            if (request->hasParam(param_wifipassword)) {
+            input_wlanpassword = request->getParam(param_wifipassword)->value();
+            input_param_wlanpassword = param_wifipassword;
+            }
+            // If empty, print no message
+            if (request->hasParam("")) {
+            input_ssid = "No message sent";
+            input_param_ssid = "none";
+            }
+            if (request->hasParam("")) {
+            input_wlanpassword = "No message sent";
+            input_param_wlanpassword = "none";
+            }
+
+            eeprom.begin("network", false);                //false mean use read/write mode
+            eeprom.putString("ssid", input_ssid);
+            eeprom.putString("wifipassword", input_wlanpassword);
+            eeprom.end();
+
+            request->send(SPIFFS, "/network.html", String(), false, proc_state);
+            
         } else {
             request->send(SPIFFS, "/login.html", String(), false, proc_state);
         }
@@ -1324,8 +1413,8 @@ void setup() {
     server.on("/esm-on", HTTP_GET, [](AsyncWebServerRequest *request){
         if (authenticated == true) {
             bool_esm = true;
-            if (bool_esm == true){ esm = 0x01; }
-            if (bool_esm == false){ esm = 0x00; }
+            if (bool_esm == true){ esmFlag = 0x01; }
+            if (bool_esm == false){ esmFlag = 0x00; }
             eeprom.begin("configuration", false);                //false mean use read/write mode
             eeprom.putBool("esm", bool_esm);     
             eeprom.end();
@@ -1338,8 +1427,8 @@ void setup() {
     server.on("/esm-off", HTTP_GET, [](AsyncWebServerRequest *request){
         if (authenticated == true) {
             bool_esm = false;
-            if (bool_esm == true){ esm = 0x01; }
-            if (bool_esm == false){ esm = 0x00; }
+            if (bool_esm == true){ esmFlag = 0x01; }
+            if (bool_esm == false){ esmFlag = 0x00; }
             eeprom.begin("configuration", false);                //false mean use read/write mode
             eeprom.putBool("esm", bool_esm);     
             eeprom.end();
@@ -1351,40 +1440,36 @@ void setup() {
 
     server.on("/restart", HTTP_GET, [](AsyncWebServerRequest *request){
         if (authenticated == true) {
-            res = 0x01;
+            resFlag = 0x01;
 
             if (tally_bb == HIGH){
                 destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
-                string_destinationAddress = "bb";
-                outgoing = "con-rec?";         // Send a message
-                sendMessage(outgoing);
-                Serial.println("LORA TxD: " + outgoing);
+                receiverMode = 0x05;
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
                 delay(500);
             }
             if (tally_cc == HIGH){
                 destination = 0xcc;
-                string_destinationAddress = "cc";
-                outgoing = "con-rec?";         // Send a message
-                sendMessage(outgoing);
-                Serial.println("LORA TxD: " + outgoing);
+                receiverMode = 0x05;      
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
                 delay(500);
             }
             if (tally_dd == HIGH){
                 destination = 0xdd;
-                string_destinationAddress = "dd";
-                outgoing = "con-rec?";         // Send a message
-                sendMessage(outgoing);
-                Serial.println("LORA TxD: " + outgoing);
+                receiverMode = 0x05;
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
                 delay(500);
             }
             if (tally_ee == HIGH){
                 destination = 0xee;
-                string_destinationAddress = "ee";
-                outgoing = "con-rec?";         // Send a message
-                sendMessage(outgoing);
-                Serial.println("LORA TxD: " + outgoing);
+                receiverMode = 0x05;
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
             }
-
+            resFlag = 0x00;
             request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
             delay(2000);
             ESP.restart();
@@ -1426,8 +1511,8 @@ void setup() {
         }
         
         eeprom.begin("configuration", false); 
-        username = eeprom.getString("user", "");
-        password = eeprom.getString("password", "");
+        username = eeprom.getString("user", username);
+        password = eeprom.getString("password", password);
         eeprom.end();
     
         if (((username == input_username) && (password == input_password)) || (authenticated == true)) {
@@ -1468,7 +1553,7 @@ void setup() {
             if (loraTxPowerNew != loraTxPower) {
 
                 loraTxPower = loraTxPowerNew;              //value for eeprom
-                byte_txpower = loraTxPowerNew;             //send via lora
+                transmissionPower = loraTxPowerNew;             //send via lora
 
                 eeprom.begin("configuration", false);                //false mean use read/write mode
                 eeprom.putInt("txpower", loraTxPower);     
@@ -1476,34 +1561,30 @@ void setup() {
 
                 if (tally_bb == HIGH){
                     destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
-                    string_destinationAddress = "bb";
-                    outgoing = "con-rec?";         // Send a message
-                    sendMessage(outgoing);
-                    Serial.println("LORA TxD: " + outgoing);
+                    receiverMode = 0x05;
+                    sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
                     delay(500);
                 }
                 if (tally_cc == HIGH){
                     destination = 0xcc;
-                    string_destinationAddress = "cc";
-                    outgoing = "con-rec?";         // Send a message
-                    sendMessage(outgoing);
-                    Serial.println("LORA TxD: " + outgoing);
+                    receiverMode = 0x05;
+                    sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
                     delay(500);
                 }
                 if (tally_dd == HIGH){
                     destination = 0xdd;
-                    string_destinationAddress = "dd";
-                    outgoing = "con-rec?";         // Send a message
-                    sendMessage(outgoing);
-                    Serial.println("LORA TxD: " + outgoing);
+                    receiverMode = 0x05;
+                    sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
                     delay(500);
                 }
                 if (tally_ee == HIGH){
                     destination = 0xee;
-                    string_destinationAddress = "ee";
-                    outgoing = "con-rec?";         // Send a message
-                    sendMessage(outgoing);
-                    Serial.println("LORA TxD: " + outgoing);
+                    receiverMode = 0x05;
+                    sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
                 }
 
                 request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
@@ -1730,7 +1811,7 @@ void setup() {
     printLora(1);
     delay(2500);
 
-    emptyDisplay();
+    clearValues();
     printDisplay();
 
     digitalWrite(DISPLAY_CS, HIGH);
@@ -1750,10 +1831,11 @@ void loop() {
     // Discover Mode
     if ((mode == "discover")) {
         destination = 0xff;
-        string_destinationAddress = "ff";
-        outgoing = "dis-anyrec?";         // Send a message
-        sendMessage(outgoing);
-        Serial.println("LORA TxD: " + outgoing);
+        receiverMode = 0x01;
+        receiverState = 0x00;
+        receiverColor = 0x00;
+        sendMessage();
+        Serial.println("LORA TxD: 0x01 DISCOVER");
         lastOfferTime = millis();
         lastOfferTimeRef = millis();
         lastDiscoverTimebb = millis();
@@ -1762,68 +1844,64 @@ void loop() {
         lastDiscoverTimeee = millis();
         mode = "offer";
         mode_s = "off";
-        emptyDisplay();
+        clearValues();
     }
 
     // Offer Mode
     while (mode == "offer") {
-        onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &incoming, &rssi, &bL, &snr);    // Parse Packets and Read it
+        onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
 
-        if ((incoming == "off") && (tx_adr == "bb") && (tally_bb == LOW)) {
-            Serial.println("LORA RxD: " + incoming);
+        if ((receiverMode = 0x02) && (tx_adr == "bb") && (tally_bb == LOW)) {
+            Serial.println("LORA RxD: ");
             tally_bb = HIGH;
             tally_bb_init = HIGH;
-            incoming_bb = incoming;
             tx_adr_bb = tx_adr;
             rssi_bb = rssi;
             bL_bb = bL;
             counterTallys++;
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
-            emptyDisplay();
+            clearValues();
         }
-        if ((incoming == "off") && (tx_adr == "cc") && (tally_cc == LOW)) {
-            Serial.println("LORA RxD: " + incoming);
+        if ((receiverMode = 0x02) && (tx_adr == "cc") && (tally_cc == LOW)) {
+            Serial.println("LORA RxD: 0x02 OFFER");
             tally_cc = HIGH;
             tally_cc_init = HIGH;
-            incoming_cc = incoming;
             tx_adr_cc = tx_adr;
             rssi_cc = rssi;
             bL_cc = bL;
             counterTallys++;
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
-            emptyDisplay();
+            clearValues();
         }
-        if ((incoming == "off") && (tx_adr == "dd") && (tally_dd == LOW)) {
-            Serial.println("LORA RxD: " + incoming);
+        if ((receiverMode = 0x02) && (tx_adr == "dd") && (tally_dd == LOW)) {
+            Serial.println("LORA RxD: 0x02 OFFER");
             tally_dd = HIGH;
             tally_dd_init = HIGH;
-            incoming_dd = incoming;
             tx_adr_dd = tx_adr;
             rssi_dd = rssi;
             bL_dd = bL;
             counterTallys++;
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
-            emptyDisplay();
+            clearValues();
         }
-        if ((incoming == "off") && (tx_adr == "ee") && (tally_ee == LOW)) {
-            Serial.println("LORA RxD: " + incoming);
+        if ((receiverMode = 0x02) && (tx_adr == "ee") && (tally_ee == LOW)) {
+            Serial.println("LORA RxD: 0x02 OFFER");
             tally_ee = HIGH;
             tally_ee_init = HIGH;
-            incoming_ee = incoming;
             tx_adr_ee = tx_adr;
             rssi_ee = rssi;
             bL_ee = bL;
             counterTallys++;
             lastOfferTime = millis();
             lastOfferTimeEnd = millis();
-            emptyDisplay();
+            clearValues();
         }
 
         if ((millis() - lastOfferTimeRef > 2500)) {      // every 2.5 s clear display
-            emptyDisplay();
+            clearValues();
             lastOfferTimeRef = millis();
         }
 
@@ -1858,106 +1936,114 @@ void loop() {
 
         if (gpioV1Cal > 2.2 && tally_bb == HIGH && gpioC1 == HIGH) {
             destination = 0xbb;
-            string_destinationAddress = "bb";
-            outgoing = "req-high";         // Send a message
-            sendMessage(outgoing);
-            Serial.println("LORA TxD: " + outgoing);
+            receiverMode = 0x03;
+            receiverState = 0x01;
+            receiverColor = 0x01;
+            sendMessage();
+            Serial.println("LORA TxD: 0x03 REQUEST");
             gpioC1 = !gpioC1;
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
-            emptyDisplay();
+            clearValues();
         }
 
         if (gpioV1Cal < 2.2 && tally_bb == HIGH && gpioC1 == LOW) {
             destination = 0xbb;
-            string_destinationAddress = "bb";
-            outgoing = "req-low";         // Send a message
-            sendMessage(outgoing);
-            Serial.println("LORA TxD: " + outgoing);
+            receiverMode = 0x03;
+            receiverState = 0x00;
+            receiverColor = 0x00;
+            sendMessage();
+            Serial.println("LORA TxD: 0x03 REQUEST");
             gpioC1 = !gpioC1;
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
-            emptyDisplay();
+            clearValues();
         }
 
         if (gpioV2Cal > 2.2 && tally_cc == HIGH && gpioC2 == HIGH) {
             destination = 0xcc;
-            string_destinationAddress = "cc";
-            outgoing = "req-high";         // Send a message
-            sendMessage(outgoing);
-            Serial.println("LORA TxD: " + outgoing);
+            receiverMode = 0x03;
+            receiverState = 0x01;
+            receiverColor = 0x01;
+            sendMessage();
+            Serial.println("LORA TxD: 0x03 REQUEST");
             gpioC2 = !gpioC2;
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
-            emptyDisplay();
+            clearValues();
         }
 
         if (gpioV2Cal < 2.2 && tally_cc == HIGH && gpioC2 == LOW) {
             destination = 0xcc;
-            string_destinationAddress = "cc";
-            outgoing = "req-low";         // Send a message
-            sendMessage(outgoing);
-            Serial.println("LORA TxD: " + outgoing);
+            receiverMode = 0x03;
+            receiverState = 0x00;
+            receiverColor = 0x00;
+            sendMessage();
+            Serial.println("LORA TxD: 0x03 REQUEST");
             gpioC2 = !gpioC2;
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
-            emptyDisplay();
+            clearValues();
         }
 
         if (gpioV3Cal > 2.2 && tally_dd == HIGH && gpioC3 == HIGH) {
             destination = 0xdd;
-            string_destinationAddress = "dd";
-            outgoing = "req-high";         // Send a message
-            sendMessage(outgoing);
-            Serial.println("LORA TxD: " + outgoing);
+            receiverMode = 0x03;
+            receiverState = 0x01;
+            receiverColor = 0x01;
+            sendMessage();
+            Serial.println("LORA TxD: 0x03 REQUEST");
             gpioC3 = !gpioC3;
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
-            emptyDisplay();
+            clearValues();
         }
 
         if (gpioV3Cal < 2.2 && tally_dd == HIGH && gpioC3 == LOW) {
             destination = 0xdd;
-            string_destinationAddress = "dd";
-            outgoing = "req-low";         // Send a message
-            sendMessage(outgoing);
-            Serial.println("LORA TxD: " + outgoing);
+            receiverMode = 0x03;
+            receiverState = 0x00;
+            receiverColor = 0x00;
+            sendMessage();
+            Serial.println("LORA TxD: 0x03 REQUEST");
             gpioC3 = !gpioC3;
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
-            emptyDisplay();
+            clearValues();
         }
 
         if (gpioV4Cal > 2.2 && tally_ee == HIGH && gpioC4 == HIGH) {
             destination = 0xee;
-            string_destinationAddress = "ee";
-            outgoing = "req-high";         // Send a message
-            sendMessage(outgoing);
-            Serial.println("LORA TxD: " + outgoing);
+            receiverMode = 0x03;
+            receiverState = 0x01;
+            receiverColor = 0x01;
+            sendMessage();
+            Serial.println("LORA TxD: 0x03 REQUEST");
             gpioC4 = !gpioC4;
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
-            emptyDisplay();
+            clearValues();
         }
 
         if (gpioV4Cal < 2.2 && tally_ee == HIGH && gpioC4 == LOW) {
             destination = 0xee;
-            string_destinationAddress = "ee";
-            outgoing = "req-low";         // Send a message
-            sendMessage(outgoing);
-            Serial.println("LORA TxD: " + outgoing);
+            receiverMode = 0x03;
+            receiverState = 0x00;
+            receiverColor = 0x00;
+            sendMessage();
+            Serial.println("LORA TxD: 0x03 REQUEST");
             gpioC4 = !gpioC4;
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
-            emptyDisplay();
+            clearValues();
         }
         lastAnalogReadTime = millis();
     }
@@ -1969,20 +2055,20 @@ void loop() {
 
     // Acknowledge Mode
     while (mode == "acknowledge") {
-        onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &incoming, &rssi, &bL, &snr);    // Parse Packets and Read it    
+        onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it    
     
         // Back to Request Mode
-        if ((incoming == "ack") && ((tx_adr == "bb") || (tx_adr == "cc") || (tx_adr == "dd") ||  (tx_adr == "ee"))) {
-            Serial.println("LORA RxD: " + incoming);
+        if ((receiverMode = 0x04) && ((tx_adr == "bb") || (tx_adr == "cc") || (tx_adr == "dd") ||  (tx_adr == "ee"))) {
+            Serial.println("LORA RxD: 0x04 ACKNOWLEDGE");
             mode = "request";
             mode_s = "req";
-            emptyDisplay();
+            clearValues();
             break;
         }
 
     // Toggel and Resend Message, if ACK not arrived after 2 secounds
     if ((millis() - lastAckTime > 2000) && (counterSend < counterSendMax)) {
-        emptyDisplay();
+        clearValues();
         mode = "request";
         mode_s = "req";
         counterSend++;
@@ -1995,7 +2081,7 @@ void loop() {
 
     // Aborting the routine after 3 failed trys
     if ((counterSend == counterSendMax)) {
-        emptyDisplay();
+        clearValues();
         mode = "request";
         mode_s = "req";
         counterSend = 0;
@@ -2006,34 +2092,34 @@ void loop() {
     // Control Mode BB after discover and 3 - 3.5 minutes or if BB offline, control after 9 minutes
     if (((millis() - lastDiscoverTimebb > 180000) && ((tally_bb == HIGH) || (tally_bb_init == HIGH))) || ((millis() - lastDiscoverTimebb > 540000) && ((tally_bb == LOW) || (tally_bb_init == LOW)))) {
         destination = 0xbb;
-        string_destinationAddress = "bb";
-        outgoing = "con-rec?";         // Send a message
-        sendMessage(outgoing);
-        Serial.println("LORA TxD: " + outgoing);
+        receiverMode = 0x05;
+        receiverState = 0x00;
+        receiverColor = 0x00;
+        sendMessage();
+        Serial.println("LORA TxD: 0x05 CONTROL");
         lastDiscoverTimebb = millis();
         lastControlTime = millis();
         mode = "control";
         mode_s = "con";
-        emptyDisplay();
+        clearValues();
 
         while (mode == "control") {
-            onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &incoming, &rssi, &bL, &snr);    // Parse Packets and Read it
+            onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
 
-            if ((incoming == "con") && (tx_adr == "bb")) {
-                Serial.println("LORA RxD: " + incoming);
+            if ((receiverMode = 0x05) && (tx_adr == "bb")) {
+                Serial.println("LORA RxD: ");
                 if (tally_bb_init == LOW || tally_bb == LOW) {
                 counterTallys++;
                 }
                 tally_bb = HIGH;
                 tally_bb_init = HIGH;
-                incoming_bb = incoming;         // reguster values for rssi measuring
                 tx_adr_bb = tx_adr;
                 rssi_bb = rssi;
                 bL_bb = bL;
                 missed_bb = 0;
                 mode = "request";
                 mode_s = "req";
-                emptyDisplay();
+                clearValues();
                 break;
             }
 
@@ -2046,7 +2132,7 @@ void loop() {
                 }
                 mode = "request"; 
                 mode_s = "req";
-                emptyDisplay();
+                clearValues();
                 break;
             }
         }
@@ -2055,34 +2141,34 @@ void loop() {
     // Control Mode CC after discover and 3 - 3.5 minutes or if BB offline, control after 9.5 minutes
     if (((millis() - lastDiscoverTimecc > 190000) && ((tally_cc == HIGH) || (tally_cc_init == HIGH))) || ((millis() - lastDiscoverTimecc > 570000) && ((tally_cc == LOW) || (tally_cc_init == LOW)))) {
         destination = 0xcc;
-        string_destinationAddress = "cc";
-        outgoing = "con-rec?";         // Send a message
-        sendMessage(outgoing);
-        Serial.println("LORA TxD: " + outgoing);
+        receiverMode = 0x05;
+        receiverState = 0x00;
+        receiverColor = 0x00;
+        sendMessage();
+        Serial.println("LORA TxD: 0x05 CONTROL");
         lastDiscoverTimecc = millis();
         lastControlTime = millis();
         mode = "control";
         mode_s = "con";
-        emptyDisplay();
+        clearValues();
 
         while (mode == "control") {
-            onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &incoming, &rssi, &bL, &snr);    // Parse Packets and Read it
+            onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
       
-            if ((incoming == "con") && (tx_adr == "cc")) {
-                Serial.println("LORA RxD: " + incoming);
+            if ((receiverMode = 0x05) && (tx_adr == "cc")) {
+                Serial.println("LORA RxD: ");
                 if (tally_cc_init == LOW || tally_cc == LOW) {
                 counterTallys++;
                 }
                 tally_cc = HIGH;
                 tally_cc_init = HIGH;
-                incoming_cc = incoming;
                 tx_adr_cc = tx_adr;
                 rssi_cc = rssi;
                 bL_cc = bL;
                 missed_cc = 0;
                 mode = "request";
                 mode_s = "req";
-                emptyDisplay();
+                clearValues();
                 break;
             }
 
@@ -2095,7 +2181,7 @@ void loop() {
                 }
                 mode = "request"; 
                 mode_s = "req";
-                emptyDisplay();
+                clearValues();
                 break;
             }
         }
@@ -2104,34 +2190,34 @@ void loop() {
     // Control Mode DD after discover and 3 - 3.5 minutes or if BB offline, control after 10 minutes
     if (((millis() - lastDiscoverTimedd > 200000) && ((tally_dd == HIGH) || (tally_dd_init == HIGH))) || ((millis() - lastDiscoverTimedd > 600000) && ((tally_dd == LOW) || (tally_dd_init == LOW)))) {
         destination = 0xdd;
-        string_destinationAddress = "dd";
-        outgoing = "con-rec?";         // Send a message
-        sendMessage(outgoing);
-        Serial.println("LORA TxD: " + outgoing);
+        receiverMode = 0x05;
+        receiverState = 0x00;
+        receiverColor = 0x00;
+        sendMessage();
+        Serial.println("LORA TxD: 0x05 CONTROL");
         lastDiscoverTimedd = millis();
         lastControlTime = millis();
         mode = "control";
         mode_s = "con";
-        emptyDisplay();
+        clearValues();
 
         while (mode == "control") {
-            onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &incoming, &rssi, &bL, &snr);    // Parse Packets and Read it
+            onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
             
-            if ((incoming == "con") && (tx_adr == "dd")) {
-                Serial.println("LORA RxD: " + incoming);
+            if ((receiverMode = 0x05) && (tx_adr == "dd")) {
+                Serial.println("LORA RxD: ");
                 if (tally_dd_init == LOW || tally_dd == LOW) {
                 counterTallys++;
                 }
                 tally_dd = HIGH;
                 tally_dd_init = HIGH;
-                incoming_dd = incoming;
                 tx_adr_dd = tx_adr;
                 rssi_dd = rssi;
                 bL_dd = bL;
                 missed_dd = 0;
                 mode = "request";
                 mode_s = "req";
-                emptyDisplay();
+                clearValues();
                 break;
             }
 
@@ -2143,8 +2229,8 @@ void loop() {
                 counterTallys--;
                 }
                 mode = "request"; 
-                mode_s = "req";
-                emptyDisplay();
+                mode_s = "req"; 
+                clearValues();
                 break;
             }
         }
@@ -2153,34 +2239,34 @@ void loop() {
     // Control Mode EE after discover and 3 - 3.5 minutes or if BB offline, control after 10.5 minutes
     if (((millis() - lastDiscoverTimeee > 210000) && ((tally_ee == HIGH) || (tally_ee_init == HIGH))) || ((millis() - lastDiscoverTimeee > 630000) && ((tally_ee == LOW) || (tally_ee_init == LOW)))) {
         destination = 0xee;
-        string_destinationAddress = "ee";
-        outgoing = "con-rec?";         // Send a message
-        sendMessage(outgoing);
-        Serial.println("LORA TxD: " + outgoing);
+        receiverMode = 0x05;
+        receiverState = 0x00;
+        receiverColor = 0x00;
+        sendMessage();
+        Serial.println("LORA TxD: 0x05 CONTROL");
         lastDiscoverTimeee = millis();
         lastControlTime = millis();
         mode = "control";
         mode_s = "con";
-        emptyDisplay();
+        clearValues();
 
         while (mode == "control") {
-            onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &incoming, &rssi, &bL, &snr);    // Parse Packets and Read it
+            onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
             
-            if ((incoming == "con") && (tx_adr == "ee")) {
-                Serial.println("LORA RxD: " + incoming);
+            if ((receiverMode = 0x05) && (tx_adr == "ee")) {
+                Serial.println("LORA RxD: ");
                 if (tally_ee_init == LOW || tally_ee == LOW) {
                 counterTallys++;
                 }
                 tally_ee = HIGH;
                 tally_ee_init = HIGH;
-                incoming_ee = incoming;
                 tx_adr_ee = tx_adr;
                 rssi_ee = rssi;
                 bL_ee = bL;
                 missed_ee = 0;
                 mode = "request";
                 mode_s = "req";
-                emptyDisplay();
+                clearValues();
                 break;
             }
 
@@ -2193,7 +2279,7 @@ void loop() {
                 }
                 mode = "request"; 
                 mode_s = "req";
-                emptyDisplay();
+                clearValues();
                 break;
             }
         }
@@ -2203,7 +2289,7 @@ void loop() {
     if (ethConnected == true && ethState == false) {
         closeSPI_LORA();
         startSPI_DISPLAY();
-        emptyDisplay();
+        clearValues();
         printDisplay();
         closeSPI_DISPLAY();
         startSPI_LORA();
@@ -2213,7 +2299,7 @@ void loop() {
     if (ethConnected == false && ethState == true) {
         closeSPI_LORA();
         startSPI_DISPLAY();
-        emptyDisplay();
+        clearValues();
         printDisplay();
         closeSPI_DISPLAY();
         startSPI_LORA();
