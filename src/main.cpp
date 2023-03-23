@@ -16,6 +16,7 @@
 #include <ESPAsyncWebServer.h>
 #include <ESPmDNS.h>
 #include <WiFi.h>
+#include <rom/rtc.h>
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -999,6 +1000,20 @@ void setup() {
 
 //////////////////////////////////////////////////////////////////////
 
+    //1=POWERON_RESET   3=SW_RESET  4=OWDT_RESET    5=DEEPSLEEP_RESET   6=SDIO_RESET    7=TG0WDT_SYS_RESET  8=TG1WDT_SYS_RESET  9=RTCWDT_SYS_RESET  
+    //10=INTRUSION_RESET  11=TGWDT_CPU_RESET  12=SW_CPU_RESET 13=RTCWDT_CPU_RESET   14=EXT_CPU_RESET    15=RTCWDT_BROWN_OUT_RESET   16=RTCWDT_RTC_RESET     default=NO_MEAN
+
+    if (rtc_get_reset_reason(0) == 1 || rtc_get_reset_reason(0) == 14 || rtc_get_reset_reason(1) == 1 || rtc_get_reset_reason(1) == 14) {
+            eeprom.begin("network", false);
+            eeprom.clear();             //Clear the eeprom when the reset button is pushed
+            eeprom.end();
+            eeprom.begin("configuration", false); 
+            eeprom.clear();
+            eeprom.end();
+    }
+
+//////////////////////////////////////////////////////////////////////
+
     eeprom.begin("network", false);                //false mean use read/write mode
     useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
     ssid = eeprom.getString("ssid", ssid);
@@ -1218,6 +1233,11 @@ void setup() {
     // Route to load style.css file
     server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/style.css", "text/css");
+    });
+
+    // Route to load popup.js file
+    server.on("/popup.js", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/popup.js", "text/js");
     });
 
     server.on("/network", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -1679,11 +1699,11 @@ void setup() {
             input_dns2 = "No message sent";
             input_param_dns2 = "none";
             }
-            //Serial.println(input_ip);
-            //Serial.println(input_gw);
-            //Serial.println(input_sn);
-            //Serial.println(input_dns1);
-            //Serial.println(input_dns2);
+            Serial.println(input_ip);
+            Serial.println(input_gw);
+            Serial.println(input_sn);
+            Serial.println(input_dns1);
+            Serial.println(input_dns2);
 
             sprintf(buf_input_ip, "%s", input_ip);
             sprintf(buf_input_gw, "%s", input_gw);
