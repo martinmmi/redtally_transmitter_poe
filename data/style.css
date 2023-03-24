@@ -1,121 +1,118 @@
-html {
+/* ALLGEMEIN */
+
+* {
+  margin: 0;                      /* Außenabstand */
+  padding: 0;                     /* Innenabstand */
   font-family: Helvetica;
   color: white;
-  font-size: 18px;
-  display: inline-block;
-  margin: 0px 4px;
-  text-align: center;
-  background-color: black;
-  background-image: linear-gradient(30deg, rgba(255, 0, 0, 0.288) 0%, black 70%)
+  font-size: 20px;
+  line-height: 140%;
 }
+
+body {
+  background-color: #353535;
+  background-image: linear-gradient(30deg, rgba(255, 0, 0, 0.432) 0%, black 70%)
+}
+
+.wrapper {                    /* Extra Feld damit Logo und Menupunkte in der Mitte bleiben*/
+  width: 960px;
+  max-width: 90%;
+  margin: 0 auto;
+  z-index: 7;
+}
+
+.box {
+  margin-bottom: 800px;
+  text-align: center;
+  justify-content: center;
+  z-index: 7;
+}
+
 h1 {
   color: #ffffff;
   padding: 2vh;
   text-indent: -4em;
   font-size: 26px;
 }
+
 h2 {
   color: #ffffff;
   padding: 2vh;
   font-size: 22px;
 }
-p {
-  font-size: 1.2rem;
+
+/* NAVIGATION */
+
+#navigation {                 /* Benennung der DIV IDs mit # */
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 90px;
+  background-color: rgb(41, 0, 0);
+  z-index: 7;
 }
-a {
-  font-family: Helvetica;
-  color: white;
+
+#logo {
+  width: 100px;
+  height: 80px;
+  float: left;
+  margin: 26px;
+  z-index: 7;
+}
+
+#menu {
+  float: right;
+  margin-top: 25px;
+  margin-right: 50px;
+  z-index: 7;
+}
+
+#menu a {
   display: inline-block;
-  margin: 0px auto;
+  margin-right: 20px;               /* Innenabstand rechts der Menupunkte */
+  padding-top: 5px;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1em;
+  z-index: 7;
+}
+
+#menu a:hover {
+  border-bottom: solid white 2px;
+}
+
+/* CONTENT */
+
+.firstcontent {
+  padding-top: 70px;
   text-align: center;
-  font-size: 1.0rem;
+  justify-content: center;
 }
-.buttonOn {
+
+.content {
+  padding-top: 50px;
+  text-align: center;
+  justify-content: center;
+}
+
+.content p {
+  padding: 15px;
+}
+
+.content a {
   display: inline-block;
-  background-color: #b74141;
-  border: none;
-  border-radius: 4px;
-  color: white;
-  padding: 12px 34px;
-  text-decoration: none;
-  font-size: 18px;
-  margin: 2px;
-  cursor: pointer;
+  margin: 5px;
+  justify-content: center;
 }
-.buttonOff {
-  display: inline-block;
-  background-color: #353535;
-  border: none;
-  border-radius: 4px;
-  color: white;
-  padding: 12px 34px;
-  text-decoration: none;
-  font-size: 18px;
-  margin: 2px;
-  cursor: pointer;
+
+.test {
+  padding-top: 100px;
+  text-align: center;
+  justify-content: center;
 }
-.buttonTsl {
-  display: inline-block;
-  background-color: #b76241;
-  border: none;
-  border-radius: 4px;
-  color: white;
-  padding: 12px 34px;
-  text-decoration: none;
-  font-size: 18px;
-  margin: 2px;
-  cursor: pointer;
-}
-.buttonGpio {
-  display: inline-block;
-  background-color: #353535;
-  border: none;
-  border-radius: 4px;
-  color: white;
-  padding: 12px 34px;
-  text-decoration: none;
-  font-size: 18px;
-  margin: 2px;
-  cursor: pointer;
-}
-.buttonMenu {
-  display: inline-block;
-  background-color: #b74141;
-  border: none;
-  border-radius: 4px;
-  color: white;
-  padding: 12px 34px;
-  text-decoration: none;
-  font-size: 18px;
-  margin: 2px;
-  cursor: pointer;
-}
-.buttonRestart {
-  display: inline-block;
-  background-color: #b76241;
-  border: none;
-  border-radius: 4px;
-  color: white;
-  padding: 12px 34px;
-  text-decoration: none;
-  font-size: 18px;
-  margin: 2px;
-  cursor: pointer;
-}
-.buttonSubmit {
-  display: inline-block;
-  background-color: #7e7e7e;
-  border: none;
-  border-radius: 4px;
-  width: 60px;
-  color: white;
-  padding: 4px 10px;
-  text-decoration: none;
-  font-size: 14px;
-  margin: 2px;
-  cursor: pointer;
-}
-.field {
+
+.content input {
   display: inline-block;
   background-color: #7e7e7e;
   border: none;
@@ -129,7 +126,8 @@ a {
   margin: 6px;
   box-sizing: border-box; 
 }
-table {
+
+.content table {
   margin-top: 10px;
   margin-bottom: 10px;
   margin-left: auto;
@@ -137,6 +135,99 @@ table {
   text-align: left;
   border-spacing: 12px 6px;
   font-size: 1.2rem;
+}
+
+#popup {
+  padding: 15px;
+}
+
+#popup input {
+  padding: 15px;
+}
+
+.return {
+  text-align: center;
+  justify-content: center;
+}
+
+.return a{
+  display: inline-block;
+  padding: 50px;
+}
+
+/* BUTTONS */
+
+.button {
+  display: inline-block;
+  background-color: #b74141;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  padding: 12px 34px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.on {
+  background-color: #b74141;
+}
+
+.on:hover {
+  background-color: #dd5555;
+}
+
+.off {
+  background-color: #353535;
+}
+
+.off:hover {
+  background-color: #575757;
+}
+
+.tsl {
+  background-color: #b76241;
+}
+
+.tsl:hover {
+  background-color: #ca7756;
+}
+
+.gpio {
+  background-color: #353535;
+}
+
+.gpio:hover {
+  background-color: #575757;
+}
+
+.restart {
+  background-color: #b76241;
+}
+
+.restart:hover {
+  background-color: #ca7756;
+}
+
+.reset {
+  background-color: #a8124c;
+}
+
+.reset:hover {
+  background-color: #c2225f;
+}
+
+.submit {
+  background-color: #7e7e7e;
+  font-size: 14px;
+  padding: 5px 15px;
+  border-radius: 4px;
+}
+
+.submit:hover {
+  background-color: #a0a0a0;
+  font-size: 14px;
+  padding: 5px 15px;
+  border-radius: 4px;
 }
 
 ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
@@ -150,51 +241,4 @@ table {
 
 ::-ms-input-placeholder { /* Microsoft Edge */
   color: rgb(255, 255, 255);
-}
-
-.container {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  transition: 0.3s;   
-}
-
-.container#blur.active
-{
-  filter:blur(10px);
-  background: rgb(0,0,0,0.7);
-  pointer-events: none;
-  user-select: none;
-  z-index: 1;
-}
-
-.container .content {
-  position: relative;
-}
-
-#popup
-{
-  position: fixed;
-  top: 45%;
-  left: 50%;
-  transform: translate(-50%,-50%);
-  width: 300px;
-  padding: 10px;
-  box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
-  background: #363636;
-  visibility: hidden;
-  opacity: 0;
-  transition: 0.3s;
-  border-radius: 4px;
-  z-index: 2;
-}
-
-#popup.active {
-  top: 50%;
-  visibility: visible;
-  opacity: 1;
-  transition: 0.3s;
-  background: #363636;
-  border-radius: 4px;
-  z-index: 3;
 }

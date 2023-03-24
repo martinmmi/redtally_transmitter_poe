@@ -1018,16 +1018,16 @@ void setup() {
     useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
     ssid = eeprom.getString("ssid", ssid);
     wifipassword = eeprom.getString("wifipassword", wifipassword);
-    useIPOctet1 = eeprom.getInt("ipOctet1", 0);
-    useIPOctet2 = eeprom.getInt("ipOctet2", 0);
-    useIPOctet3 = eeprom.getInt("ipOctet3", 0);
-    useIPOctet4 = eeprom.getInt("ipOctet4", 0);
-    useGWOctet1 = eeprom.getInt("gwOctet1", 0);
-    useGWOctet2 = eeprom.getInt("gwOctet2", 0);
-    useGWOctet3 = eeprom.getInt("gwOctet3", 0);
-    useGWOctet4 = eeprom.getInt("gwOctet4", 0);  
-    useSNOctet1 = eeprom.getInt("snOctet1", 0);
-    useSNOctet2 = eeprom.getInt("snOctet2", 0);
+    useIPOctet1 = eeprom.getInt("ipOctet1", 192);
+    useIPOctet2 = eeprom.getInt("ipOctet2", 168);
+    useIPOctet3 = eeprom.getInt("ipOctet3", 1);
+    useIPOctet4 = eeprom.getInt("ipOctet4", 100);
+    useGWOctet1 = eeprom.getInt("gwOctet1", 192);
+    useGWOctet2 = eeprom.getInt("gwOctet2", 168);
+    useGWOctet3 = eeprom.getInt("gwOctet3", 1);
+    useGWOctet4 = eeprom.getInt("gwOctet4", 1);  
+    useSNOctet1 = eeprom.getInt("snOctet1", 255);
+    useSNOctet2 = eeprom.getInt("snOctet2", 255);
     useSNOctet3 = eeprom.getInt("snOctet3", 0);
     useSNOctet4 = eeprom.getInt("snOctet4", 0);  
     useDNS1Octet1 = eeprom.getInt("dns1Octet1", 1);
@@ -1499,12 +1499,67 @@ void setup() {
         }
     });
 
+    server.on("/factoryreset", HTTP_GET, [](AsyncWebServerRequest *request){
+        if (authenticated == true) {
+            resFlag = 0x01;
+
+            if (tally_bb == HIGH){
+                destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
+                receiverMode = 0x05;
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
+                delay(500);
+            }
+            if (tally_cc == HIGH){
+                destination = 0xcc;
+                receiverMode = 0x05;      
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
+                delay(500);
+            }
+            if (tally_dd == HIGH){
+                destination = 0xdd;
+                receiverMode = 0x05;
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
+                delay(500);
+            }
+            if (tally_ee == HIGH){
+                destination = 0xee;
+                receiverMode = 0x05;
+                sendMessage();
+                Serial.println("LORA TxD: 0x05 CONTROL");
+            }
+            resFlag = 0x00;
+
+            request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+            
+            eeprom.begin("network", false);
+            eeprom.clear();             //Clear the eeprom when the reset button is pushed
+            eeprom.end();
+            eeprom.begin("configuration", false); 
+            eeprom.clear();
+            eeprom.end();
+
+            delay(2000);
+            ESP.restart();
+
+        } else {
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
+        }
+    });
+
     server.on("/info", HTTP_GET, [](AsyncWebServerRequest *request){
         if (authenticated == true) {
             request->send(SPIFFS, "/info.html", String(), false, proc_state);
         } else {
             request->send(SPIFFS, "/login.html", String(), false, proc_state);
         }
+    });
+
+    server.on("/logout", HTTP_GET, [] (AsyncWebServerRequest *request) {
+            authenticated = false;
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
     });
 
     // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
@@ -1649,6 +1704,7 @@ void setup() {
             eeprom.end(); 
 
             request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+            delay(2000);
 
         } else {
             request->send(SPIFFS, "/login.html", String(), false, proc_state);
