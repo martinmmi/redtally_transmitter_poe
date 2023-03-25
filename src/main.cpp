@@ -48,6 +48,7 @@ String password = "admin";
 String ssid = "mySSID";
 String wifipassword = "myPASSWORD";
 
+char buf_rssi[4];
 char buf_version[5];
 char buf_localAddress[5];
 char buf_mode[4];
@@ -171,6 +172,7 @@ int int_gwOctet1, int_gwOctet2, int_gwOctet3, int_gwOctet4;
 int int_snOctet1, int_snOctet2, int_snOctet3, int_snOctet4;
 int int_dns1Octet1, int_dns1Octet2, int_dns1Octet3, int_dns1Octet4;
 int int_dns2Octet1, int_dns2Octet2, int_dns2Octet3, int_dns2Octet4;
+int buf_rssi_bb_int = 0;
 
 ///////////////////////////////////////////////
 //////////// Setup LORA Values ////////////////
@@ -328,6 +330,25 @@ String proc_state(const String& state){
 
     if(state == "RSSI_EE"){        
             return rssi_ee;
+    }
+
+    if(state == "SS_BB"){        
+
+            if ((buf_rssi_bb_int <= -80)) {
+                return "|";
+            }
+            if ((buf_rssi_bb_int <= -60 ) && (buf_rssi_bb_int >= -79)) {
+                return "||";
+            }
+            if ((buf_rssi_bb_int <= -40 ) && (buf_rssi_bb_int >= -59)) {
+                return "|||";
+            }
+            if ((buf_rssi_bb_int <= -20 ) && (buf_rssi_bb_int >= -39)) {
+                return "||||";
+            }
+            if ((buf_rssi_bb_int >= -19)) {
+                return "|||||";
+            }
     }
 
     if(state == "BL_BB"){        
@@ -1933,6 +1954,10 @@ void loop() {
             tally_bb_init = HIGH;
             tx_adr_bb = tx_adr;
             rssi_bb = rssi;
+
+            sprintf(buf_rssi, "%s", rssi);          //Register value string rssi convert into buffer char rssi
+            buf_rssi_bb_int = atoi(buf_rssi);              //Convert char rssi in int rssi
+
             bL_bb = bL;
             counterTallys++;
             lastOfferTime = millis();
@@ -2191,6 +2216,10 @@ void loop() {
                 tally_bb_init = HIGH;
                 tx_adr_bb = tx_adr;
                 rssi_bb = rssi;
+
+                sprintf(buf_rssi, "%s", rssi);          //Register value string rssi convert into buffer char rssi
+                buf_rssi_bb_int = atoi(buf_rssi);              //Convert char rssi in int rssi
+
                 bL_bb = bL;
                 missed_bb = 0;
                 mode = "request";
