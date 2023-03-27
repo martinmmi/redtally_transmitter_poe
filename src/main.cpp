@@ -13,10 +13,12 @@
 #include <SPI.h>
 #include <SD.h>
 #include <SPIFFS.h>                     //lib for filesystem
+#include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPmDNS.h>
 #include <WiFi.h>
 #include <rom/rtc.h>
+#include <mbedtls/md.h>
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -38,15 +40,16 @@ String bL_bb, bL_cc, bL_dd, bL_ee;
 String html_state_bb, html_state_cc, html_state_dd, html_state_ee;
 String html_state_dhcp, html_state_wlan, html_state_dns, html_state_esm, html_state_tsl;
 String html_state_ip, html_state_gw, html_state_snm, html_state_dns1, html_state_dns2;
+String html_state_username, html_state_password, html_state_wifipw;
 String ipOctet1, ipOctet2, ipOctet3, ipOctet4;
 String gwOctet1, gwOctet2, gwOctet3, gwOctet4;
 String snOctet1, snOctet2, snOctet3, snOctet4;
 String dns1Octet1, dns1Octet2, dns1Octet3, dns1Octet4;
 String dns2Octet1, dns2Octet2, dns2Octet3, dns2Octet4;
-String username = "admin";                  // default Values if the eeprom is empty
-String password = "admin";
 String ssid = "mySSID";
 String wifipassword = "myPASSWORD";
+String www_username = "admin";
+String www_password = "admin";
 
 char buf_rssi[4];
 char buf_version[5];
@@ -116,7 +119,6 @@ const char* param_new_user = "inputNewUser";
 const char* param_new_password = "inputNewPassword";
 const char* param_ssid = "inputSSID";
 const char* param_wifipassword = "inputWLANPASSWORD";
-
 
 ///////////////////////////////////////////////
 ///////// Setup Transmitter Values ////////////
@@ -272,10 +274,6 @@ Preferences eeprom;            //Initiate Flash Memory
 
 String proc_state(const String& state){
 
-    if(state == "STATE_NAME"){
-            return name_html;
-    }
-
     if(state == "STATE_BB"){
         if(tally_bb == HIGH) {
             html_state_bb = "ONLINE";
@@ -389,7 +387,20 @@ String proc_state(const String& state){
     }
 
     if(state == "STATE_WLANPASSWORD"){
-        return "&#x95;&#x95;&#x95;&#x95;&#x95;&#x95;&#x95;&#x95;&#x95;&#x95;";
+        eeprom.begin("network", false); 
+        html_state_wifipw = eeprom.getString("wifipassword", wifipassword);
+        eeprom.end();
+
+        const char* char_html_state_wifipw = html_state_wifipw.c_str();                           //convert string to char
+
+        int m = strlen(char_html_state_wifipw) - 1;
+        String sendbull = "&#x95";
+            
+        for(int i=0; i<m; i++) {
+            sendbull = sendbull + "&#x95";  
+        } 
+
+        return sendbull;
     }
 
     if(state == "STATE_ESM"){
@@ -473,13 +484,26 @@ String proc_state(const String& state){
 
     if(state == "STATE_USERNAME"){
             eeprom.begin("configuration", false); 
-            username = eeprom.getString("user", username);
+            html_state_username = eeprom.getString("user", www_username);
             eeprom.end();
-            return username;
+            return html_state_username;
     }
 
     if(state == "STATE_PASSWORD"){
-            return "&#x95;&#x95;&#x95;&#x95;&#x95;";
+            eeprom.begin("configuration", false); 
+            html_state_password = eeprom.getString("password", www_password);
+            eeprom.end();
+
+            const char* char_html_state_password = html_state_password.c_str();                           //convert string to char
+
+            int n = strlen(char_html_state_password) - 1;
+            String sendbull = "&#x95";
+            
+            for(int i=0; i<n; i++) {
+            sendbull = sendbull + "&#x95";  
+            } 
+
+            return sendbull;
     }
 
   return String();
@@ -694,6 +718,7 @@ void sendMessage() {
     LoRa.endPacket();                     // finish packet and send it
     msgCount++;                           // increment message ID
 
+    /*
     Serial.print("DST: "); Serial.print(destination);
     Serial.print(" SOURCE: "); Serial.print(localAddress);
     Serial.print(" MSGKEY1: "); Serial.print(msgKey1);
@@ -705,7 +730,7 @@ void sendMessage() {
     Serial.print(" RSTATE: "); Serial.print(receiverState);
     Serial.print(" RCOLOR: "); Serial.print(receiverColor);
     Serial.print(" MSGCOUNT: "); Serial.println(msgCount);
-
+    */
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -903,14 +928,6 @@ void WiFiEvent(WiFiEvent_t event) {
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 
-void notFound(AsyncWebServerRequest *request) {
-  request->send(SPIFFS, "/notfound.html", String(), false, proc_state);
-}
-
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-
 void startWIFI() {
 
     eeprom.begin("network", false); 
@@ -947,6 +964,101 @@ void endWIFI() {
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
     Serial.println("Diconnected from WIFI.");
+}
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
+String sha1(String payloadStr){
+
+  const char *payload = payloadStr.c_str();
+  int size = 20;
+  byte shaResult[size];
+  mbedtls_md_context_t ctx;
+  mbedtls_md_type_t md_type = MBEDTLS_MD_SHA1;
+  const size_t payloadLength = strlen(payload);
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 0);
+  mbedtls_md_starts(&ctx);
+  mbedtls_md_update(&ctx, (const unsigned char *) payload, payloadLength);
+  mbedtls_md_finish(&ctx, shaResult);
+  mbedtls_md_free(&ctx);
+  String hashStr = "";
+
+  for(uint16_t i = 0; i < size; i++) {
+
+    String hex = String(shaResult[i], HEX);
+    if(hex.length() < 2) {
+      hex = "0" + hex;
+    }
+    
+    hashStr += hex;
+    }
+
+  return hashStr;
+}
+
+//////////////////////////////////////////////////////////////////////
+
+void handleLogin(AsyncWebServerRequest *request) {
+
+  Serial.println("AUTH handle login.");
+  String msg;
+
+  if (request->hasHeader("Cookie")) {
+    // Print cookies
+    Serial.print("AUTH found cookie: ");
+    String cookie = request->header("Cookie");
+    Serial.println(cookie);
+  }
+
+  if (request->hasArg("username") && request->hasArg("password")) {
+    Serial.print("AUTH found parameter ");
+
+    if (request->arg("username") == www_username && request->arg("password") == www_password) {
+      AsyncWebServerResponse *response = request->beginResponse(301); //Sends 301 redirect
+      response->addHeader("Location", "/");
+      response->addHeader("Cache-Control", "no-cache");
+      String token = sha1(www_username + ":" + www_password + ":" + request->client()->remoteIP().toString());
+      Serial.print("Token: ");
+      Serial.println(token);
+      response->addHeader("Set-Cookie", "ESPSESSIONID=" + token);
+      request->send(response);
+      Serial.println("AUTH login successful.");
+      authenticated = true;
+      return;
+    }
+
+    msg = "Wrong Username or Password! Try again.";
+    Serial.println("AUTH login failed.");
+    AsyncWebServerResponse *response = request->beginResponse(301); //Sends 301 redirect
+    response->addHeader("Location", "/login.html?msg=" + msg);
+    response->addHeader("Cache-Control", "no-cache");
+    //request->send(response);
+    request->send(SPIFFS, "/authentificationfalse.html", String(), false, proc_state);
+    authenticated = false;
+    return;
+  }
+}
+
+//////////////////////////////////////////////////////////////////////
+
+void handleLogout(AsyncWebServerRequest *request) {
+  Serial.println("AUTH disconnection.");
+  AsyncWebServerResponse *response = request->beginResponse(301); //Sends 301 redirect
+  response->addHeader("Location", "/login.html?msg=User disconnected");
+  response->addHeader("Cache-Control", "no-cache");
+  response->addHeader("Set-Cookie", "ESPSESSIONID=0");
+  request->send(response);
+  authenticated = false;
+  return;
+}
+
+//////////////////////////////////////////////////////////////////////
+
+void handleNotFound(AsyncWebServerRequest *request) {
+  request->send(SPIFFS, "/notfound.html", String(), false, proc_state);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -1023,8 +1135,9 @@ void setup() {
     bool_tsl = eeprom.getBool("tsl", false);        
     bool_esm = eeprom.getBool("esm", false);
     loraTxPower = eeprom.getInt("txpower", loraTxPower);            //if the eeprom is never written, then give the default value back
-    username = eeprom.getString("user", username);
-    password = eeprom.getString("password", password);
+    
+    www_username = eeprom.getString("user", www_username);
+    www_password = eeprom.getString("password", www_password);
 
     transmissionPower = loraTxPower;  
 
@@ -1200,6 +1313,7 @@ void setup() {
 
 //////////////////////////////////////////////////////////////////////
  
+
     // Route for root / web page
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
         if (authenticated == true) {
@@ -1209,16 +1323,19 @@ void setup() {
         }
     });
     
+
     // Route to load style.css file
     server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/style.css", "text/css");
     });
+
 
     // Route to load popup.js file
     server.on("/popup.js", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/popup.js", "text/js");
     });
 
+    
     server.on("/network", HTTP_GET, [](AsyncWebServerRequest *request){
         if (authenticated == true) {
             request->send(SPIFFS, "/network.html", String(), false, proc_state);
@@ -1536,54 +1653,6 @@ void setup() {
         }
     });
 
-    server.on("/logout", HTTP_GET, [] (AsyncWebServerRequest *request) {
-            authenticated = false;
-            request->send(SPIFFS, "/login.html", String(), false, proc_state);
-    });
-
-    // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
-    server.on("/login", HTTP_GET, [] (AsyncWebServerRequest *request) {
-        String input_username, input_password;
-        String input_param_username, input_param_password;
-
-        // GET inputUser value on <ESP_IP>/get?inputUser=<inputMessage>
-        if (request->hasParam(param_user)) {
-        input_username = request->getParam(param_user)->value();
-        input_param_username = param_user;
-        }
-        // GET inputPassword value on <ESP_IP>/get?inputPassword=<inputMessage>
-        if (request->hasParam(param_password)) {
-        input_password = request->getParam(param_password)->value();
-        input_param_password = param_password;
-        }
-        // If empty, print no message
-        if (request->hasParam("")) {
-        input_username = "No message sent";
-        input_param_username = "none";
-        input_password = "No message sent";
-        input_param_password = "none";
-        }
-        
-        eeprom.begin("configuration", false); 
-        username = eeprom.getString("user", username);
-        password = eeprom.getString("password", password);
-        eeprom.end();
-    
-        if (((username == input_username) && (password == input_password)) || (authenticated == true)) {
-            Serial.println("Authentification Successful");
-            authenticated = true;
-            lastAuthentication = millis();
-            request->send(SPIFFS, "/index.html", String(), false, proc_state);
-        }
-
-        if (((username != input_username) && (password != input_password)) || (authenticated == false)) {
-            Serial.println("Authentification Unsuccessful");
-            authenticated = false;
-            request->send(SPIFFS, "/authentificationfalse.html", String(), false, proc_state);
-        }
-
-    });
-  
     // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
     server.on("/get-txp", HTTP_GET, [] (AsyncWebServerRequest *request) {
         if (authenticated == true) {
@@ -1684,6 +1753,7 @@ void setup() {
 
             request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
             delay(2000);
+            ESP.restart();
 
         } else {
             request->send(SPIFFS, "/login.html", String(), false, proc_state);
@@ -1852,7 +1922,24 @@ void setup() {
         }
     });
 
-    server.onNotFound(notFound);
+
+    server.on("/login", HTTP_POST, handleLogin);
+    server.on("/logout", HTTP_GET, handleLogout);
+
+
+    server.onNotFound([](AsyncWebServerRequest *request) {               // If the client requests any URI
+        Serial.println("WEBS: Website not founded!");
+        handleNotFound(request); // otherwise, respond with a 404 (Not Found) error
+    });
+
+
+    Serial.println("AUTH set cache.");
+    // Serve a file with no cache so every tile It's downloaded
+    server.serveStatic("/configuration.json", SPIFFS, "/configuration.json", "no-cache, no-store, must-revalidate");
+    // Server all other page with long cache so browser chaching they
+    // Comment this line for esp8266
+    server.serveStatic("/", SPIFFS, "/", "max-age=31536000");
+
 
     server.begin();
     Serial.println("HTTP server started.");
@@ -1875,7 +1962,7 @@ void setup() {
 
     startSPI_LORA();
 
-    }
+}
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
@@ -1890,7 +1977,7 @@ void loop() {
         receiverState = 0x00;
         receiverColor = 0x00;
         sendMessage();
-        Serial.println("LORA TxD: 0x01 DISCOVER");
+        //Serial.println("LORA TxD: 0x01 DISCOVER");
         lastOfferTime = millis();
         lastOfferTimeRef = millis();
         lastDiscoverTimebb = millis();
