@@ -1026,6 +1026,7 @@ void handleLogin(AsyncWebServerRequest *request) {
       response->addHeader("Set-Cookie", "ESPSESSIONID=" + token);
       request->send(response);
       Serial.println("AUTH login successful.");
+      lastAuthentication = millis();
       authenticated = true;
       return;
     }
