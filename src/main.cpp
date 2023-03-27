@@ -1907,7 +1907,7 @@ void loop() {
         onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
 
         if ((receiverMode = 0x02) && (tx_adr == "bb") && (tally_bb == LOW)) {
-            Serial.println("LORA RxD: ");
+            Serial.println("LORA RxD: 0x02 OFFER");
             tally_bb = HIGH;
             tally_bb_init = HIGH;
             tx_adr_bb = tx_adr;
@@ -2166,7 +2166,7 @@ void loop() {
             onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
 
             if ((receiverMode = 0x05) && (tx_adr == "bb")) {
-                Serial.println("LORA RxD: ");
+                Serial.println("LORA RxD: 0x05 CONTROL");
                 if (tally_bb_init == LOW || tally_bb == LOW) {
                 counterTallys++;
                 }
@@ -2219,7 +2219,7 @@ void loop() {
             onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
       
             if ((receiverMode = 0x05) && (tx_adr == "cc")) {
-                Serial.println("LORA RxD: ");
+                Serial.println("LORA RxD: 0x05 CONTROL");
                 if (tally_cc_init == LOW || tally_cc == LOW) {
                 counterTallys++;
                 }
@@ -2268,7 +2268,7 @@ void loop() {
             onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
             
             if ((receiverMode = 0x05) && (tx_adr == "dd")) {
-                Serial.println("LORA RxD: ");
+                Serial.println("LORA RxD: 0x05 CONTROL");
                 if (tally_dd_init == LOW || tally_dd == LOW) {
                 counterTallys++;
                 }
@@ -2317,7 +2317,7 @@ void loop() {
             onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
             
             if ((receiverMode = 0x05) && (tx_adr == "ee")) {
-                Serial.println("LORA RxD: ");
+                Serial.println("LORA RxD: 0x05 CONTROL");
                 if (tally_ee_init == LOW || tally_ee == LOW) {
                 counterTallys++;
                 }
