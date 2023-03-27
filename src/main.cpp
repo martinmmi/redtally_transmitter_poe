@@ -1095,6 +1095,15 @@ void setup() {
     //1=POWERON_RESET   3=SW_RESET  4=OWDT_RESET    5=DEEPSLEEP_RESET   6=SDIO_RESET    7=TG0WDT_SYS_RESET  8=TG1WDT_SYS_RESET  9=RTCWDT_SYS_RESET  
     //10=INTRUSION_RESET  11=TGWDT_CPU_RESET  12=SW_CPU_RESET 13=RTCWDT_CPU_RESET   14=EXT_CPU_RESET    15=RTCWDT_BROWN_OUT_RESET   16=RTCWDT_RTC_RESET     default=NO_MEAN
 
+    //When upload some programs, esp clear the flash with the reason 1 and 14
+    //When restart, only reason 12 is excecuted
+
+    //Serial.print("CPU0 reset reason: ");
+    //Serial.println(rtc_get_reset_reason(0));
+
+    //Serial.print("CPU1 reset reason: ");
+    //Serial.println(rtc_get_reset_reason(1));
+
     if (rtc_get_reset_reason(0) == 1 || rtc_get_reset_reason(0) == 14 || rtc_get_reset_reason(1) == 1 || rtc_get_reset_reason(1) == 14) {
             eeprom.begin("network", false);
             eeprom.clear();             //Clear the eeprom when the reset button is pushed
