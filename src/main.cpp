@@ -332,25 +332,6 @@ String proc_state(const String& state){
             return rssi_ee;
     }
 
-    if(state == "SS_BB"){        
-
-            if ((buf_rssi_bb_int <= -80)) {
-                return "|";
-            }
-            if ((buf_rssi_bb_int <= -60 ) && (buf_rssi_bb_int >= -79)) {
-                return "||";
-            }
-            if ((buf_rssi_bb_int <= -40 ) && (buf_rssi_bb_int >= -59)) {
-                return "|||";
-            }
-            if ((buf_rssi_bb_int <= -20 ) && (buf_rssi_bb_int >= -39)) {
-                return "||||";
-            }
-            if ((buf_rssi_bb_int >= -19)) {
-                return "|||||";
-            }
-    }
-
     if(state == "BL_BB"){        
             return bL_bb;
     }
@@ -966,29 +947,6 @@ void endWIFI() {
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
     Serial.println("Diconnected from WIFI.");
-}
-
-void scanWIFI() {
-    Serial.println("Scan WIFI.");
-    int n = WiFi.scanNetworks();
-    Serial.println("Scan done.");
-    if (n == 0) {
-        Serial.println("No WIFI networks founded.");
-    } else {
-        Serial.print(n);
-        Serial.println("Networks founded: ");
-        for (int i = 0; i < n; ++i) {
-        // Print SSID and RSSI for each network found
-        Serial.print(i + 1);
-        Serial.print(": ");
-        Serial.print(WiFi.SSID(i));
-        Serial.print(" (");
-        Serial.print(WiFi.RSSI(i));
-        Serial.print(")");
-        Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
-        delay(10);
-        }
-    }
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -2035,7 +1993,7 @@ void loop() {
         gpioV3Cal = gpioV3Map * (3.3 / 4095.0);
         gpioV4Cal = gpioV4Map * (3.3 / 4095.0);
 
-        if (gpioV1Cal > 2.2 && tally_bb == HIGH && gpioC1 == HIGH) {
+        if ((gpioV1Cal > 2.2 && tally_bb == HIGH && gpioC1 == HIGH)) {
             destination = 0xbb;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2049,7 +2007,7 @@ void loop() {
             clearValues();
         }
 
-        if (gpioV1Cal < 2.2 && tally_bb == HIGH && gpioC1 == LOW) {
+        if ((gpioV1Cal < 2.2 && tally_bb == HIGH && gpioC1 == LOW)) {
             destination = 0xbb;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2063,7 +2021,7 @@ void loop() {
             clearValues();
         }
 
-        if (gpioV2Cal > 2.2 && tally_cc == HIGH && gpioC2 == HIGH) {
+        if ((gpioV2Cal > 2.2 && tally_cc == HIGH && gpioC2 == HIGH)) {
             destination = 0xcc;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2077,7 +2035,7 @@ void loop() {
             clearValues();
         }
 
-        if (gpioV2Cal < 2.2 && tally_cc == HIGH && gpioC2 == LOW) {
+        if ((gpioV2Cal < 2.2 && tally_cc == HIGH && gpioC2 == LOW)) {
             destination = 0xcc;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2091,7 +2049,7 @@ void loop() {
             clearValues();
         }
 
-        if (gpioV3Cal > 2.2 && tally_dd == HIGH && gpioC3 == HIGH) {
+        if ((gpioV3Cal > 2.2 && tally_dd == HIGH && gpioC3 == HIGH)) {
             destination = 0xdd;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2105,7 +2063,7 @@ void loop() {
             clearValues();
         }
 
-        if (gpioV3Cal < 2.2 && tally_dd == HIGH && gpioC3 == LOW) {
+        if ((gpioV3Cal < 2.2 && tally_dd == HIGH && gpioC3 == LOW)) {
             destination = 0xdd;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2119,7 +2077,7 @@ void loop() {
             clearValues();
         }
 
-        if (gpioV4Cal > 2.2 && tally_ee == HIGH && gpioC4 == HIGH) {
+        if ((gpioV4Cal > 2.2 && tally_ee == HIGH && gpioC4 == HIGH)) {
             destination = 0xee;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2133,7 +2091,7 @@ void loop() {
             clearValues();
         }
 
-        if (gpioV4Cal < 2.2 && tally_ee == HIGH && gpioC4 == LOW) {
+        if ((gpioV4Cal < 2.2 && tally_ee == HIGH && gpioC4 == LOW)) {
             destination = 0xee;
             receiverMode = 0x03;
             receiverState = 0x00;

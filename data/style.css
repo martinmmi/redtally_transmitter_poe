@@ -168,6 +168,17 @@ h2 {
   cursor: pointer;
 }
 
+.buttontest {
+  display: inline-block;
+  background-color: #b74141;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  padding: 6px 17px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
 .on {
   background-color: #b74141;
 }
