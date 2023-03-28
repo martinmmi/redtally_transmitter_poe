@@ -718,7 +718,7 @@ void sendMessage() {
     LoRa.endPacket();                     // finish packet and send it
     msgCount++;                           // increment message ID
 
-    /*
+    
     Serial.print("DST: "); Serial.print(destination);
     Serial.print(" SOURCE: "); Serial.print(localAddress);
     Serial.print(" MSGKEY1: "); Serial.print(msgKey1);
@@ -730,7 +730,7 @@ void sendMessage() {
     Serial.print(" RSTATE: "); Serial.print(receiverState);
     Serial.print(" RCOLOR: "); Serial.print(receiverColor);
     Serial.print(" MSGCOUNT: "); Serial.println(msgCount);
-    */
+    
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -1987,7 +1987,7 @@ void loop() {
         receiverState = 0x00;
         receiverColor = 0x00;
         sendMessage();
-        //Serial.println("LORA TxD: 0x01 DISCOVER");
+        Serial.println("LORA TxD: 0x01 DISCOVER");
         lastOfferTime = millis();
         lastOfferTimeRef = millis();
         lastDiscoverTimebb = millis();
