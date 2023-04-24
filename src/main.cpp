@@ -1115,8 +1115,16 @@ void setup() {
 
 //////////////////////////////////////////////////////////////////////
 
+    /*
+    useSTATIC = true;
     eeprom.begin("network", false);                //false mean use read/write mode
-    useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
+    eeprom.putBool("dhcp", useSTATIC);     
+    eeprom.end();
+    */
+
+    eeprom.begin("network", false);                //false mean use read/write mode
+    useSTATIC = eeprom.getBool("dhcp", true);     //false mean default value if nothing returned
+    Serial.print("useSTATIC: "); Serial.println(useSTATIC);
     ssid = eeprom.getString("ssid", ssid);
     wifipassword = eeprom.getString("wifipassword", wifipassword);
     useIPOctet1 = eeprom.getInt("ipOctet1", 192);
@@ -1360,7 +1368,7 @@ void setup() {
             eeprom.begin("network", false);                //false mean use read/write mode
             eeprom.putBool("dhcp", useSTATIC);     
             eeprom.end();
-            //Serial.print("useSTATIC: "); Serial.print(useSTATIC);
+            Serial.print("useSTATIC: "); Serial.println(useSTATIC);
             resFlag = 0x01;
 
             if (tally_bb == HIGH){
@@ -1405,7 +1413,7 @@ void setup() {
             eeprom.begin("network", false);                //false mean use read/write mode
             eeprom.putBool("dhcp", useSTATIC);     
             eeprom.end();
-            //Serial.print("useSTATIC: "); Serial.print(useSTATIC);
+            Serial.print("useSTATIC: "); Serial.println(useSTATIC);
             resFlag = 0x01;
 
             if (tally_bb == HIGH){
@@ -2090,7 +2098,14 @@ void loop() {
         gpioV3Cal = gpioV3Map * (3.3 / 4095.0);
         gpioV4Cal = gpioV4Map * (3.3 / 4095.0);
 
-        if ((gpioV1Cal > 2.2 && tally_bb == HIGH && gpioC1 == HIGH)) {
+        /*
+        Serial.print("gpioV1Cal: "); Serial.println(gpioV1Cal);
+        Serial.print("gpioV2Cal: "); Serial.println(gpioV2Cal);
+        Serial.print("gpioV3Cal: "); Serial.println(gpioV3Cal);
+        Serial.print("gpioV4Cal: "); Serial.println(gpioV4Cal);
+        */
+
+        if ((gpioV1Cal > 2.8 && tally_bb == HIGH && gpioC1 == HIGH)) {
             destination = 0xbb;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2104,7 +2119,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV1Cal < 2.2 && tally_bb == HIGH && gpioC1 == LOW)) {
+        if ((gpioV1Cal < 2.8 && tally_bb == HIGH && gpioC1 == LOW)) {
             destination = 0xbb;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2118,7 +2133,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV2Cal > 2.2 && tally_cc == HIGH && gpioC2 == HIGH)) {
+        if ((gpioV2Cal > 2.8 && tally_cc == HIGH && gpioC2 == HIGH)) {
             destination = 0xcc;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2132,7 +2147,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV2Cal < 2.2 && tally_cc == HIGH && gpioC2 == LOW)) {
+        if ((gpioV2Cal < 2.8 && tally_cc == HIGH && gpioC2 == LOW)) {
             destination = 0xcc;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2146,7 +2161,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV3Cal > 2.2 && tally_dd == HIGH && gpioC3 == HIGH)) {
+        if ((gpioV3Cal > 2.8 && tally_dd == HIGH && gpioC3 == HIGH)) {
             destination = 0xdd;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2160,7 +2175,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV3Cal < 2.2 && tally_dd == HIGH && gpioC3 == LOW)) {
+        if ((gpioV3Cal < 2.8 && tally_dd == HIGH && gpioC3 == LOW)) {
             destination = 0xdd;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2174,7 +2189,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV4Cal > 2.2 && tally_ee == HIGH && gpioC4 == HIGH)) {
+        if ((gpioV4Cal > 2.8 && tally_ee == HIGH && gpioC4 == HIGH)) {
             destination = 0xee;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2188,7 +2203,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV4Cal < 2.2 && tally_ee == HIGH && gpioC4 == LOW)) {
+        if ((gpioV4Cal < 2.8 && tally_ee == HIGH && gpioC4 == LOW)) {
             destination = 0xee;
             receiverMode = 0x03;
             receiverState = 0x00;
