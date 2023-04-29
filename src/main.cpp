@@ -17,7 +17,7 @@
 #include <ESPAsyncWebServer.h>
 #include <ESPmDNS.h>
 #include <WiFi.h>
-#include <rom/rtc.h>
+//#include <rom/rtc.h>
 #include <mbedtls/md.h>
 
 #ifdef U8X8_HAVE_HW_SPI
@@ -1075,10 +1075,10 @@ void setup() {
     Serial.println(name);
     Serial.println("Version: " + version);
 
-    pinMode(gpioP1, INPUT_PULLDOWN);
-    pinMode(gpioP2, INPUT_PULLDOWN);
-    pinMode(gpioP3, INPUT_PULLDOWN);
-    pinMode(gpioP4, INPUT_PULLDOWN);
+    pinMode(gpioP1, INPUT);
+    pinMode(gpioP2, INPUT);
+    pinMode(gpioP3, INPUT);
+    pinMode(gpioP4, INPUT);
 
     pinMode(SD_CS, OUTPUT);                                     //CS SD
     pinMode(LORA_CS, OUTPUT);                                   //CS LORA
@@ -1098,13 +1098,14 @@ void setup() {
     //When upload some programs, esp clear the flash with the reason 1 and 14
     //When restart, only reason 12 is excecuted
 
-    //Serial.print("CPU0 reset reason: ");
-    //Serial.println(rtc_get_reset_reason(0));
+    /*
+    Serial.print("CPU0 reset reason: ");
+    Serial.println(rtc_get_reset_reason(0));
 
-    //Serial.print("CPU1 reset reason: ");
-    //Serial.println(rtc_get_reset_reason(1));
+    Serial.print("CPU1 reset reason: ");
+    Serial.println(rtc_get_reset_reason(1));
 
-    if (rtc_get_reset_reason(0) == 1 || rtc_get_reset_reason(0) == 14 || rtc_get_reset_reason(1) == 1 || rtc_get_reset_reason(1) == 14) {
+    if ((rtc_get_reset_reason(0) == 1 && rtc_get_reset_reason(1) == 14)) {
             eeprom.begin("network", false);
             eeprom.clear();             //Clear the eeprom when the reset button is pushed
             eeprom.end();
@@ -1112,6 +1113,7 @@ void setup() {
             eeprom.clear();
             eeprom.end();
     }
+    */
 
 //////////////////////////////////////////////////////////////////////
 
@@ -2098,12 +2100,20 @@ void loop() {
         gpioV3Cal = gpioV3Map * (3.3 / 4095.0);
         gpioV4Cal = gpioV4Map * (3.3 / 4095.0);
 
-        /*
+        
         Serial.print("gpioV1Cal: "); Serial.println(gpioV1Cal);
         Serial.print("gpioV2Cal: "); Serial.println(gpioV2Cal);
         Serial.print("gpioV3Cal: "); Serial.println(gpioV3Cal);
         Serial.print("gpioV4Cal: "); Serial.println(gpioV4Cal);
-        */
+        Serial.print("tally_bb: "); Serial.println(tally_bb);
+        Serial.print("tally_cc: "); Serial.println(tally_cc);
+        Serial.print("tally_dd: "); Serial.println(tally_dd);
+        Serial.print("tally_ee: "); Serial.println(tally_ee);
+        Serial.print("gpioC1: "); Serial.println(gpioC1);
+        Serial.print("gpioC2: "); Serial.println(gpioC2);
+        Serial.print("gpioC3: "); Serial.println(gpioC3);
+        Serial.print("gpioC4: "); Serial.println(gpioC4);
+        
 
         if ((gpioV1Cal > 2.8 && tally_bb == HIGH && gpioC1 == HIGH)) {
             destination = 0xbb;
