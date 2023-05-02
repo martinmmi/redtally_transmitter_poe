@@ -19,6 +19,7 @@
 #include <WiFi.h>
 #include <rom/rtc.h>
 #include <mbedtls/md.h>
+#include <WebSocketsClient.h> // WebSocket Client Library for WebSocket
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -27,6 +28,9 @@
 #ifdef U8X8_HAVE_HW_I2C
 #include <Wire.h>
 #endif
+
+WebSocketsClient webSocket; // websocket client class instance
+StaticJsonDocument<100> doc; // Allocate a static JSON document
 
 String mode = "discover";
 String mode_s = "dis";
@@ -1110,7 +1114,7 @@ void setup() {
     //When upload some programs, esp clear the flash with the reason 1 and 14
     //When restart, only reason 12 is excecuted
 
-    /*
+    
     Serial.print("CPU0 reset reason: ");
     Serial.println(rtc_get_reset_reason(0));
 
@@ -1125,7 +1129,6 @@ void setup() {
             eeprom.clear();
             eeprom.end();
     }
-    */
 
 //////////////////////////////////////////////////////////////////////
 
@@ -1974,6 +1977,13 @@ void setup() {
 
     startSPI_LORA();
 
+    //address, port, and URL path
+    webSocket.begin("192.168.50.128", 80, "/");
+    // WebSocket event handler
+    webSocket.onEvent(webSocketEvent);
+    // if connection failed retry every 5s
+    webSocket.setReconnectInterval(5000);
+
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -2210,6 +2220,9 @@ void loop() {
 
     // Request Mode TSL
     if ((mode == "request") && (millis() - lastTslReadTime > 250) && (useTSL == true)) {
+
+        webSocket.loop(); // Keep the socket alive
+
         lastTslReadTime = millis();
     }
 
