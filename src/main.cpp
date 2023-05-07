@@ -2072,7 +2072,7 @@ void loop() {
         }
   
     // Request Mode GPIO
-    if ((mode == "request") && (millis() - lastAnalogReadTime > 250) && (useTSL == false)) {
+    if ((mode == "request") && (millis() - lastAnalogReadTime > 500) && (useTSL == false)) {
 
         gpioV1 = analogRead(gpioP1);
         gpioV2 = analogRead(gpioP2);
@@ -2087,7 +2087,7 @@ void loop() {
         gpioV3Cal = gpioV3Map * (3.3 / 4095.0);
         gpioV4Cal = gpioV4Map * (3.3 / 4095.0);
 
-        /*
+        
         Serial.print("gpioV1Cal: "); Serial.println(gpioV1Cal);
         Serial.print("gpioV2Cal: "); Serial.println(gpioV2Cal);
         Serial.print("gpioV3Cal: "); Serial.println(gpioV3Cal);
@@ -2100,7 +2100,7 @@ void loop() {
         Serial.print("gpioC2: "); Serial.println(gpioC2);
         Serial.print("gpioC3: "); Serial.println(gpioC3);
         Serial.print("gpioC4: "); Serial.println(gpioC4);
-        */
+        
 
         if ((gpioV1Cal > 2.8 && tally_bb == HIGH && gpioC1 == HIGH)) {
             destination = 0xbb;
