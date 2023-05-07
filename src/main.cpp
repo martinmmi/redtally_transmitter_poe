@@ -56,6 +56,7 @@ char buf_version[5];
 char buf_localAddress[5];
 char buf_mode[4];
 char buf_ip[16];
+char buf_ipip[16];
 char buf_gw[16];
 char buf_sn[16];
 char buf_dns[16];
@@ -836,7 +837,7 @@ void printDisplay() {
     
     if (ethConnected == true) {
         String MyIpAddress = convertAddress(ETH.localIP());
-        sprintf(buf_ip, "%s", MyIpAddress);
+        MyIpAddress.toCharArray(buf_ipip, 16);
 
         String MyGwAddress = convertAddress(ETH.gatewayIP());
         sprintf(buf_gw, "%s", MyGwAddress);
@@ -883,7 +884,7 @@ void printDisplay() {
         u8g2.setFont(u8g2_font_6x13_tf);
         u8g2.setDrawColor(1);
         u8g2.drawStr(0,35,"IP:");
-        u8g2.drawStr(25,35,buf_ip);
+        u8g2.drawStr(25,35,buf_ipip);
         u8g2.drawStr(0,50,"SN:");
         u8g2.drawStr(25,50,buf_sn);
     }else {
@@ -1136,17 +1137,17 @@ void setup() {
     */
 
     eeprom.begin("network", false);                //false mean use read/write mode
-    useSTATIC = eeprom.getBool("dhcp", true);     //false mean default value if nothing returned
+    useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
     Serial.print("useSTATIC: "); Serial.println(useSTATIC);
     ssid = eeprom.getString("ssid", ssid);
     wifipassword = eeprom.getString("wifipassword", wifipassword);
     useIPOctet1 = eeprom.getInt("ipOctet1", 192);
     useIPOctet2 = eeprom.getInt("ipOctet2", 168);
-    useIPOctet3 = eeprom.getInt("ipOctet3", 1);
+    useIPOctet3 = eeprom.getInt("ipOctet3", 178);
     useIPOctet4 = eeprom.getInt("ipOctet4", 100);
     useGWOctet1 = eeprom.getInt("gwOctet1", 192);
     useGWOctet2 = eeprom.getInt("gwOctet2", 168);
-    useGWOctet3 = eeprom.getInt("gwOctet3", 1);
+    useGWOctet3 = eeprom.getInt("gwOctet3", 178);
     useGWOctet4 = eeprom.getInt("gwOctet4", 1);  
     useSNOctet1 = eeprom.getInt("snOctet1", 255);
     useSNOctet2 = eeprom.getInt("snOctet2", 255);
