@@ -19,6 +19,7 @@
 #include <WiFi.h>
 #include <rom/rtc.h>
 #include <mbedtls/md.h>
+#include <ctype.h>
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -1839,7 +1840,7 @@ void setup() {
             ptr_ip = strtok(NULL, ".");
             int_ipOctet4 = atoi(ptr_ip);
 
-            if ((scanf("%i", &int_ipOctet1) != 3) || (scanf("%i", &int_ipOctet2) != 3) || (scanf("%i", &int_ipOctet3) != 3) || (scanf("%i", &int_ipOctet4) != 3)) {
+            if ((0 >= int_ipOctet1 <= 255) || (0 >= int_ipOctet2 <= 255) || (0 >= int_ipOctet3 <= 255) || (0 >= int_ipOctet4 <= 255)) {
                 Serial.println("ERROR!");
                 error = true;
             }
