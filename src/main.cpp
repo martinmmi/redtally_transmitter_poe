@@ -68,11 +68,11 @@ char buf_oledInit[32];
 char buf_spiffsInit[32];
 char buf_mdnsInit[32];
 char buf_httpInit[32];
-char buf_input_ip[32];
-char buf_input_gw[32];
-char buf_input_sn[32];
-char buf_input_dns1[32];
-char buf_input_dns2[32];
+char buf_input_ip[100];
+char buf_input_gw[100];
+char buf_input_sn[100];
+char buf_input_dns1[100];
+char buf_input_dns2[100];
 char buf_ipOctet1[4];
 char buf_ipOctet2[4];
 char buf_ipOctet3[4];
@@ -223,7 +223,9 @@ bool loraInit = false;
 bool sdInit = false;
 bool oledInit = false;
 bool authenticated = false;
-bool error = false;
+bool errorip = false;
+bool notempty = false;
+bool errortxp = false;
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -1139,7 +1141,7 @@ void setup() {
 
     eeprom.begin("network", false);                //false mean use read/write mode
     useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
-    Serial.print("useSTATIC: "); Serial.println(useSTATIC);
+    //Serial.print("useSTATIC: "); Serial.println(useSTATIC);
     ssid = eeprom.getString("ssid", ssid);
     wifipassword = eeprom.getString("wifipassword", wifipassword);
     useIPOctet1 = eeprom.getInt("ipOctet1", 192);
@@ -1687,47 +1689,65 @@ void setup() {
             input_param_txp = "none";
             }
 
-            sprintf(buf_txpower, "%s", input_txp);
-            loraTxPowerNew = atoi(buf_txpower);
+            errortxp = false;
 
-            if (loraTxPowerNew != loraTxPower) {
+            if(input_txp != "") {
+                sprintf(buf_txpower, "%s", input_txp);
+                loraTxPowerNew = atoi(buf_txpower);
 
-                loraTxPower = loraTxPowerNew;              //value for eeprom
-                transmissionPower = loraTxPowerNew;             //send via lora
+                Serial.print("LoraTxPowerNew: "); Serial.println(loraTxPowerNew);
 
-                eeprom.begin("configuration", false);                //false mean use read/write mode
-                eeprom.putInt("txpower", loraTxPower);     
-                eeprom.end(); 
-
-                if (tally_bb == HIGH){
-                    destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
-                    receiverMode = 0x05;
-                    sendMessage();
-                    delay(500);
+                if ((loraTxPowerNew < 2) || (loraTxPowerNew > 20)) {
+                    Serial.println("ERROR!");
+                    errortxp = true;
                 }
-                if (tally_cc == HIGH){
-                    destination = 0xcc;
-                    receiverMode = 0x05;
-                    sendMessage();
-                    delay(500);
-                }
-                if (tally_dd == HIGH){
-                    destination = 0xdd;
-                    receiverMode = 0x05;
-                    sendMessage();
-                    delay(500);
-                }
-                if (tally_ee == HIGH){
-                    destination = 0xee;
-                    receiverMode = 0x05;
-                    sendMessage();
-                }
+                else {
 
-                request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
-                delay(2000);
-                ESP.restart();
-            } else{
-                request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+                    if (loraTxPowerNew != loraTxPower) {
+
+                        loraTxPower = loraTxPowerNew;              //value for eeprom
+                        transmissionPower = loraTxPowerNew;             //send via lora
+
+                        eeprom.begin("configuration", false);                //false mean use read/write mode
+                        eeprom.putInt("txpower", loraTxPower);     
+                        eeprom.end(); 
+
+                        if (tally_bb == HIGH){
+                            destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
+                            receiverMode = 0x05;
+                            sendMessage();
+                            delay(500);
+                        }
+                        if (tally_cc == HIGH){
+                            destination = 0xcc;
+                            receiverMode = 0x05;
+                            sendMessage();
+                            delay(500);
+                        }
+                        if (tally_dd == HIGH){
+                            destination = 0xdd;
+                            receiverMode = 0x05;
+                            sendMessage();
+                            delay(500);
+                        }
+                        if (tally_ee == HIGH){
+                            destination = 0xee;
+                            receiverMode = 0x05;
+                            sendMessage();
+                        }
+
+                        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+                        delay(2000);
+                        ESP.restart();
+                    } else{
+                        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+                    }
+
+                }
+            }
+
+            if(input_txp == "" || errortxp == true) {
+                request->send(SPIFFS, "/formaterror.html", String(), false, proc_state);
             }
 
         } else {
@@ -1817,11 +1837,12 @@ void setup() {
             input_dns2 = "No message sent";
             input_param_dns2 = "none";
             }
-            Serial.println(input_ip);
-            Serial.println(input_gw);
-            Serial.println(input_sn);
-            Serial.println(input_dns1);
-            Serial.println(input_dns2);
+
+            sprintf(buf_input_ip, "%s", "");
+            sprintf(buf_input_gw, "%s", "");
+            sprintf(buf_input_sn, "%s", "");
+            sprintf(buf_input_dns1, "%s", "");
+            sprintf(buf_input_dns2, "%s", "");
 
             sprintf(buf_input_ip, "%s", input_ip);
             sprintf(buf_input_gw, "%s", input_gw);
@@ -1829,107 +1850,150 @@ void setup() {
             sprintf(buf_input_dns1, "%s", input_dns1);
             sprintf(buf_input_dns2, "%s", input_dns2);
 
-            error = false;
+            errorip = false;
+            notempty = false;
 
-            char* ptr_ip = strtok(buf_input_ip, ".");
-            int_ipOctet1 = atoi(ptr_ip);
-            ptr_ip = strtok(NULL, ".");
-            int_ipOctet2 = atoi(ptr_ip);
-            ptr_ip = strtok(NULL, ".");
-            int_ipOctet3 = atoi(ptr_ip);
-            ptr_ip = strtok(NULL, ".");
-            int_ipOctet4 = atoi(ptr_ip);
+            if(input_ip != "") {
+                notempty = true;
+                char* ptr_ip = strtok(buf_input_ip, ".");
+                int_ipOctet1 = atoi(ptr_ip);
+                ptr_ip = strtok(NULL, ".");
+                int_ipOctet2 = atoi(ptr_ip);
+                ptr_ip = strtok(NULL, ".");
+                int_ipOctet3 = atoi(ptr_ip);
+                ptr_ip = strtok(NULL, ".");
+                int_ipOctet4 = atoi(ptr_ip);
+                Serial.print(int_ipOctet1); Serial.print("."); Serial.print(int_ipOctet2); Serial.print("."); Serial.print(int_ipOctet3); Serial.print("."); Serial.println(int_ipOctet4);
 
-            if ((0 >= int_ipOctet1 <= 255) || (0 >= int_ipOctet2 <= 255) || (0 >= int_ipOctet3 <= 255) || (0 >= int_ipOctet4 <= 255)) {
-                Serial.println("ERROR!");
-                error = true;
+                if ((int_ipOctet1 < 0) || (int_ipOctet1 > 255) || (int_ipOctet2 < 0) || (int_ipOctet2 > 255) || (int_ipOctet3 < 0) || (int_ipOctet3 > 255) || (int_ipOctet4 < 0) || (int_ipOctet4 > 255)) {
+                    Serial.println("ERROR 1!");
+                    errorip = true;
+                }
+                else {
+                    eeprom.begin("network", false);                //false mean use read/write mode
+                    eeprom.putInt("ipOctet1", int_ipOctet1);  
+                    eeprom.putInt("ipOctet2", int_ipOctet2);    
+                    eeprom.putInt("ipOctet3", int_ipOctet3);
+                    eeprom.putInt("ipOctet4", int_ipOctet4);            
+                    eeprom.end();
+                }
             }
 
-            char* ptr_gw = strtok(buf_input_gw, ".");
-            int_gwOctet1 = atoi(ptr_gw);
-            ptr_gw = strtok(NULL, ".");
-            int_gwOctet2 = atoi(ptr_gw);
-            ptr_gw = strtok(NULL, ".");
-            int_gwOctet3 = atoi(ptr_gw);
-            ptr_gw = strtok(NULL, ".");
-            int_gwOctet4 = atoi(ptr_gw);
+            if(input_gw != "") {
+                notempty = true;
+                char* ptr_gw = strtok(buf_input_gw, ".");
+                int_gwOctet1 = atoi(ptr_gw);
+                ptr_gw = strtok(NULL, ".");
+                int_gwOctet2 = atoi(ptr_gw);
+                ptr_gw = strtok(NULL, ".");
+                int_gwOctet3 = atoi(ptr_gw);
+                ptr_gw = strtok(NULL, ".");
+                int_gwOctet4 = atoi(ptr_gw);
+                Serial.print(int_gwOctet1); Serial.print("."); Serial.print(int_gwOctet2); Serial.print("."); Serial.print(int_gwOctet3); Serial.print("."); Serial.println(int_gwOctet4);
 
-            if ((scanf("%i", &int_gwOctet1) != 3) || (scanf("%i", &int_gwOctet2) != 3) || (scanf("%i", &int_gwOctet3) != 3) || (scanf("%i", &int_gwOctet4) != 3)) {
-                Serial.println("ERROR!");
-                error = true;
+                if ((int_gwOctet1 < 0) || (int_gwOctet1 > 255) || (int_gwOctet2 < 0) || (int_gwOctet2 > 255) || (int_gwOctet3 < 0) || (int_gwOctet3 > 255) || (int_gwOctet4 < 0) || (int_gwOctet4 > 255)) {
+                    Serial.println("ERROR 2!");
+                    errorip = true;
+                }
+                else {
+                    eeprom.begin("network", false);                //false mean use read/write mode     
+                    eeprom.putInt("gwOctet1", int_gwOctet1);  
+                    eeprom.putInt("gwOctet2", int_gwOctet2);    
+                    eeprom.putInt("gwOctet3", int_gwOctet3);
+                    eeprom.putInt("gwOctet4", int_gwOctet4);           
+                    eeprom.end();
+                }
             }
 
-            char* ptr_sn = strtok(buf_input_sn, ".");
-            int_snOctet1 = atoi(ptr_sn);
-            ptr_sn = strtok(NULL, ".");
-            int_snOctet2 = atoi(ptr_sn);
-            ptr_sn = strtok(NULL, ".");
-            int_snOctet3 = atoi(ptr_sn);
-            ptr_sn = strtok(NULL, ".");
-            int_snOctet4 = atoi(ptr_sn);
+            if(input_sn != "") {
+                notempty = true;
+                char* ptr_sn = strtok(buf_input_sn, ".");
+                int_snOctet1 = atoi(ptr_sn);
+                ptr_sn = strtok(NULL, ".");
+                int_snOctet2 = atoi(ptr_sn);
+                ptr_sn = strtok(NULL, ".");
+                int_snOctet3 = atoi(ptr_sn);
+                ptr_sn = strtok(NULL, ".");
+                int_snOctet4 = atoi(ptr_sn);
+                Serial.print(int_snOctet1); Serial.print("."); Serial.print(int_snOctet2); Serial.print("."); Serial.print(int_snOctet3); Serial.print("."); Serial.println(int_snOctet4);
 
-            if ((scanf("%i", &int_snOctet1) != 3) || (scanf("%i", &int_snOctet2) != 3) || (scanf("%i", &int_snOctet3) != 3) || (scanf("%i", &int_snOctet4) != 3)) {
-                Serial.println("ERROR!");
-                error = true;
+                if ((int_snOctet1 < 0) || (int_snOctet1 > 255) || (int_snOctet2 < 0) || (int_snOctet2 > 255) || (int_snOctet3 < 0) || (int_snOctet3 > 255) || (int_snOctet4 < 0) || (int_snOctet4 > 255)) {
+                    Serial.println("ERROR 3!");
+                    errorip = true;
+                }
+                else {
+                    eeprom.begin("network", false);                //false mean use read/write mode          
+                    eeprom.putInt("snOctet1", int_snOctet1);  
+                    eeprom.putInt("snOctet2", int_snOctet2);    
+                    eeprom.putInt("snOctet3", int_snOctet3);
+                    eeprom.putInt("snOctet4", int_snOctet4);           
+                    eeprom.end();
+                }
             }
 
-            char* ptr_dns1 = strtok(buf_input_dns1, ".");
-            int_dns1Octet1 = atoi(ptr_dns1);
-            ptr_dns1 = strtok(NULL, ".");
-            int_dns1Octet2 = atoi(ptr_dns1);
-            ptr_dns1 = strtok(NULL, ".");
-            int_dns1Octet3 = atoi(ptr_dns1);
-            ptr_dns1 = strtok(NULL, ".");
-            int_dns1Octet4 = atoi(ptr_dns1);
+            if(input_dns1 != "") {
+                notempty = true;
+                char* ptr_dns1 = strtok(buf_input_dns1, ".");
+                int_dns1Octet1 = atoi(ptr_dns1);
+                ptr_dns1 = strtok(NULL, ".");
+                int_dns1Octet2 = atoi(ptr_dns1);
+                ptr_dns1 = strtok(NULL, ".");
+                int_dns1Octet3 = atoi(ptr_dns1);
+                ptr_dns1 = strtok(NULL, ".");
+                int_dns1Octet4 = atoi(ptr_dns1);
+                Serial.print(int_dns1Octet1); Serial.print("."); Serial.print(int_dns1Octet2); Serial.print("."); Serial.print(int_dns1Octet3); Serial.print("."); Serial.println(int_dns1Octet4);
 
-            if ((scanf("%i", &int_dns1Octet1) != 3) || (scanf("%i", &int_dns1Octet2) != 3) || (scanf("%i", &int_dns1Octet3) != 3) || (scanf("%i", &int_dns1Octet4) != 3)) {
-                Serial.println("ERROR!");
-                error = true;
+                if ((int_dns1Octet1 < 0) || (int_dns1Octet1 > 255) || (int_dns1Octet2 < 0) || (int_dns1Octet2 > 255) || (int_dns1Octet3 < 0) || (int_dns1Octet3 > 255) || (int_dns1Octet4 < 0) || (int_dns1Octet4 > 255)) {
+                    Serial.println("ERROR 4!");
+                    errorip = true;
+                }
+                else {
+                    eeprom.begin("network", false);                //false mean use read/write mode          
+                    eeprom.putInt("dns1Octet1", int_dns1Octet1);  
+                    eeprom.putInt("dns1Octet2", int_dns1Octet2);    
+                    eeprom.putInt("dns1Octet3", int_dns1Octet3);
+                    eeprom.putInt("dns1Octet4", int_dns1Octet4);           
+                    eeprom.end();
+                }
             }
 
-            char* ptr_dns2 = strtok(buf_input_dns2, ".");
-            int_dns2Octet1 = atoi(ptr_dns2);
-            ptr_dns2 = strtok(NULL, ".");
-            int_dns2Octet2 = atoi(ptr_dns2);
-            ptr_dns2 = strtok(NULL, ".");
-            int_dns2Octet3 = atoi(ptr_dns2);
-            ptr_dns2 = strtok(NULL, ".");
-            int_dns2Octet4 = atoi(ptr_dns2);
-
-            if ((scanf("%i", &int_dns2Octet1) != 3) || (scanf("%i", &int_dns2Octet2) != 3) || (scanf("%i", &int_dns2Octet3) != 3) || (scanf("%i", &int_dns2Octet4) != 3)) {
-                Serial.println("ERROR!");
-                error = true;
+            if(input_dns2 != "") {
+                notempty = true;
+                char* ptr_dns2 = strtok(buf_input_dns2, ".");
+                int_dns2Octet1 = atoi(ptr_dns2);
+                ptr_dns2 = strtok(NULL, ".");
+                int_dns2Octet2 = atoi(ptr_dns2);
+                ptr_dns2 = strtok(NULL, ".");
+                int_dns2Octet3 = atoi(ptr_dns2);
+                ptr_dns2 = strtok(NULL, ".");
+                int_dns2Octet4 = atoi(ptr_dns2);
+                Serial.print(int_dns2Octet1); Serial.print("."); Serial.print(int_dns2Octet2); Serial.print("."); Serial.print(int_dns2Octet3); Serial.print("."); Serial.println(int_dns2Octet4);
+                
+                if ((int_dns2Octet1 < 0) || (int_dns2Octet1 > 255) || (int_dns2Octet2 < 0) || (int_dns2Octet2 > 255) || (int_dns2Octet3 < 0) || (int_dns2Octet3 > 255) || (int_dns2Octet4 < 0) || (int_dns2Octet4 > 255)) {
+                    Serial.println("ERROR 5!");
+                    errorip = true;
+                }
+                else {
+                    eeprom.begin("network", false);                //false mean use read/write mode         
+                    eeprom.putInt("dns2Octet1", int_dns2Octet1);  
+                    eeprom.putInt("dns2Octet2", int_dns2Octet2);    
+                    eeprom.putInt("dns2Octet3", int_dns2Octet3);
+                    eeprom.putInt("dns2Octet4", int_dns2Octet4);      
+                    eeprom.end();
+                }
             }
 
-            //if (error == false) {
+            if (errorip == true || notempty == false) {
+                request->send(SPIFFS, "/formaterror.html", String(), false, proc_state);
+            }
 
-                eeprom.begin("network", false);                //false mean use read/write mode
-                eeprom.putInt("ipOctet1", int_ipOctet1);  
-                eeprom.putInt("ipOctet2", int_ipOctet2);    
-                eeprom.putInt("ipOctet3", int_ipOctet3);
-                eeprom.putInt("ipOctet4", int_ipOctet4);      
-                eeprom.putInt("gwOctet1", int_gwOctet1);  
-                eeprom.putInt("gwOctet2", int_gwOctet2);    
-                eeprom.putInt("gwOctet3", int_gwOctet3);
-                eeprom.putInt("gwOctet4", int_gwOctet4);      
-                eeprom.putInt("snOctet1", int_snOctet1);  
-                eeprom.putInt("snOctet2", int_snOctet2);    
-                eeprom.putInt("snOctet3", int_snOctet3);
-                eeprom.putInt("snOctet4", int_snOctet4);      
-                eeprom.putInt("dns1Octet1", int_dns1Octet1);  
-                eeprom.putInt("dns1Octet2", int_dns1Octet2);    
-                eeprom.putInt("dns1Octet3", int_dns1Octet3);
-                eeprom.putInt("dns1Octet4", int_dns1Octet4);      
-                eeprom.putInt("dns2Octet1", int_dns2Octet1);  
-                eeprom.putInt("dns2Octet2", int_dns2Octet2);    
-                eeprom.putInt("dns2Octet3", int_dns2Octet3);
-                eeprom.putInt("dns2Octet4", int_dns2Octet4);      
-                eeprom.end();
-            //}
+            if (errorip == false && notempty == true){
+                request->send(SPIFFS, "/network.html", String(), false, proc_state);
+                delay(2000);
+                ESP.restart();
+            }
 
-            request->send(SPIFFS, "/network.html", String(), false, proc_state);
-            delay(2000);
-            ESP.restart();
+        
         } else {
                 request->send(SPIFFS, "/login.html", String(), false, proc_state);
         }
