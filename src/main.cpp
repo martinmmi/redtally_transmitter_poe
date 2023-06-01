@@ -29,6 +29,9 @@
 #include <Wire.h>
 #endif
 
+WiFiUDP udp;
+const int udpPort = 3333;
+
 String mode = "discover";
 String mode_s = "dis";
 String name_html = "REDTALLY";              // Device Name
@@ -68,6 +71,7 @@ char buf_oledInit[32];
 char buf_spiffsInit[32];
 char buf_mdnsInit[32];
 char buf_httpInit[32];
+char buf_udpDiag[32];
 char buf_input_ip[100];
 char buf_input_gw[100];
 char buf_input_sn[100];
@@ -177,6 +181,7 @@ int int_snOctet1, int_snOctet2, int_snOctet3, int_snOctet4;
 int int_dns1Octet1, int_dns1Octet2, int_dns1Octet3, int_dns1Octet4;
 int int_dns2Octet1, int_dns2Octet2, int_dns2Octet3, int_dns2Octet4;
 int buf_rssi_bb_int = 0;
+int udpDatagram;
 
 ///////////////////////////////////////////////
 //////////// Setup LORA Values ////////////////
@@ -226,6 +231,7 @@ bool authenticated = false;
 bool errorip = false;
 bool notempty = false;
 bool errortxp = false;
+bool notSend = false;
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -926,6 +932,14 @@ void WiFiEvent(WiFiEvent_t event) {
         Serial.print(ETH.linkSpeed());
         Serial.println("Mbps.");
         ethConnected = true;
+
+        //initializes the UDP state
+        //This initializes the transfer buffer
+        Serial.print("Start UDP receiver to ");
+        Serial.print(udpPort);
+        Serial.println(" Port");
+        udp.begin(WiFi.localIP(), udpPort);
+
         break;
     case ARDUINO_EVENT_ETH_DISCONNECTED:
         Serial.println("ETH disconnected.");
@@ -2273,11 +2287,77 @@ void loop() {
         lastAnalogReadTime = millis();
     }
 
+
+
+
+
     // Request Mode TSL
-    if ((mode == "request") && (millis() - lastTslReadTime > 250) && (useTSL == true)) {
+    if ((mode == "request") && (millis() - lastTslReadTime > 100) && (useTSL == true)) {
+
+        if (ethConnected) {
+            
+            if (udp.parsePacket() > 0) {
+                while (udp.available()) {
+                    udpDatagram = udp.read();
+                    notSend = false;
+                }
+                if (!udp.available() && notSend == false) {
+                    Serial.print("udpDatagram"); Serial.println(udpDatagram);
+                    notSend = true;
+                }
+            }
+
+            //tally bb off
+            if (udpDatagram == 30) {
+                destination = 0xbb;
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                gpioC1 = !gpioC1;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                clearValues();
+            }
+
+            //tally bb green
+            if (udpDatagram == 31) {
+                destination = 0xbb;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x02;
+                sendMessage();
+                gpioC1 = !gpioC1;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                clearValues();
+            }
+
+            //tally bb red
+            if (udpDatagram == 33) {
+                destination = 0xbb;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                gpioC1 = !gpioC1;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                clearValues();
+            }
+
+        }
+
 
         lastTslReadTime = millis();
     }
+
+
+
+
 
     // Acknowledge Mode
     while (mode == "acknowledge") {
