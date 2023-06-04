@@ -30,7 +30,7 @@
 #endif
 
 WiFiUDP udp;
-const int udpPort = 3333;
+const int udpPort = 5727;
 
 String mode = "discover";
 String mode_s = "dis";
@@ -55,6 +55,8 @@ String wifipassword = "myPASSWORD";
 String www_username = "admin";
 String www_password = "admin";
 
+char buf_udpDiag[] = {' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' '};
+
 char buf_rssi[4];
 char buf_version[5];
 char buf_localAddress[5];
@@ -71,7 +73,6 @@ char buf_oledInit[32];
 char buf_spiffsInit[32];
 char buf_mdnsInit[32];
 char buf_httpInit[32];
-char buf_udpDiag[32];
 char buf_input_ip[100];
 char buf_input_gw[100];
 char buf_input_sn[100];
@@ -1154,7 +1155,7 @@ void setup() {
     */
 
     eeprom.begin("network", false);                //false mean use read/write mode
-    useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
+    useSTATIC = eeprom.getBool("dhcp", true);     //false mean default value if nothing returned
     //Serial.print("useSTATIC: "); Serial.println(useSTATIC);
     ssid = eeprom.getString("ssid", ssid);
     wifipassword = eeprom.getString("wifipassword", wifipassword);
@@ -2297,18 +2298,22 @@ void loop() {
         if (ethConnected) {
             
             if (udp.parsePacket() > 0) {
+
                 while (udp.available()) {
-                    udpDatagram = udp.read();
+
+                    udp.readBytesUntil('\n', buf_udpDiag, 12);
+
+                    //udpDatagram = udp.read();
                     notSend = false;
                 }
                 if (!udp.available() && notSend == false) {
-                    Serial.print("udpDatagram"); Serial.println(udpDatagram);
+                    Serial.print("buf_udpDiag: "); Serial.println(buf_udpDiag);
                     notSend = true;
                 }
             }
 
             //tally bb off
-            if (udpDatagram == 30) {
+            if (buf_udpDiag == "8ABCDEFG") {
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2322,7 +2327,7 @@ void loop() {
             }
 
             //tally bb green
-            if (udpDatagram == 31) {
+            if (buf_udpDiag == "81ABCDEFG") {
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2336,7 +2341,7 @@ void loop() {
             }
 
             //tally bb red
-            if (udpDatagram == 33) {
+            if (buf_udpDiag == "83ABCDEFG") {
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x01;
