@@ -41,6 +41,12 @@ h2 {
   font-size: 22px;
 }
 
+h3 {
+  color: #ffffff;
+  padding: 2vh;
+  font-size: 12px;
+}
+
 /* NAVIGATION */
 
 #navigation {                 /* Benennung der DIV IDs mit # */

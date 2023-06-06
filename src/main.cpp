@@ -36,7 +36,7 @@ String mode = "discover";
 String mode_s = "dis";
 String name_html = "REDTALLY";              // Device Name
 String name = "REDTALLY Transmitter";       // Device Name
-String version = "T0.02";                   // Frimeware Version
+String version = "T0.03";                   // Frimeware Version
 String rx_adr, tx_adr, rssi, bL;
 String tx_adr_bb, tx_adr_cc, tx_adr_dd, tx_adr_ee;
 String rssi_bb, rssi_cc, rssi_dd, rssi_ee;
@@ -55,7 +55,7 @@ String wifipassword = "myPASSWORD";
 String www_username = "admin";
 String www_password = "admin";
 
-char buf_udpDiag[] = {' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' '};
+char buf_udpDiag[18];
 
 char buf_rssi[4];
 char buf_version[5];
@@ -114,6 +114,8 @@ char buf_html_snm[32];
 char buf_html_dns1[32];
 char buf_html_dns2[32];
 
+int udp_seq[32] = {};
+
 const char* param_ip = "input1";
 const char* param_gw = "input2";
 const char* param_sn = "input3";
@@ -156,8 +158,9 @@ unsigned long lastOfferTime = 0;                   // Last send time
 unsigned long lastOfferTimeRef = 0;
 unsigned long lastOfferTimeEnd = 0;
 unsigned long lastControlTime = 0;
-unsigned long lastAckTime = 0;      
-unsigned long lastAckTimeEnd = 0;      
+unsigned long lastAckTime = 0;    
+unsigned long lastAckTimeEnd = 0; 
+unsigned long lastSwitchTime = 0;       
 unsigned long lastAnalogReadTime = 0;
 unsigned long lastDisplayPrint = 0;
 unsigned long lastTslReadTime = 0;
@@ -165,6 +168,7 @@ unsigned long lastAuthentication = 0;
 
 int defaultBrightnessDisplay = 255;   // value from 1 to 255
 int counterSend = 0;
+int counterSendTsl = 0;
 int counterSendMax = 2;
 int counterTallys = 0;
 int gpioP1 = 36, gpioP2 = 39, gpioP3 = 34, gpioP4 = 35;
@@ -182,7 +186,6 @@ int int_snOctet1, int_snOctet2, int_snOctet3, int_snOctet4;
 int int_dns1Octet1, int_dns1Octet2, int_dns1Octet3, int_dns1Octet4;
 int int_dns2Octet1, int_dns2Octet2, int_dns2Octet3, int_dns2Octet4;
 int buf_rssi_bb_int = 0;
-int udpDatagram;
 
 ///////////////////////////////////////////////
 //////////// Setup LORA Values ////////////////
@@ -1155,7 +1158,7 @@ void setup() {
     */
 
     eeprom.begin("network", false);                //false mean use read/write mode
-    useSTATIC = eeprom.getBool("dhcp", true);     //false mean default value if nothing returned
+    useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
     //Serial.print("useSTATIC: "); Serial.println(useSTATIC);
     ssid = eeprom.getString("ssid", ssid);
     wifipassword = eeprom.getString("wifipassword", wifipassword);
@@ -2182,7 +2185,7 @@ void loop() {
         Serial.print("gpioC4: "); Serial.println(gpioC4);
         
 
-        if ((gpioV1Cal > 2.8 && tally_bb == HIGH && gpioC1 == HIGH)) {
+        if ((gpioV1Cal > 2.8 && tally_bb == HIGH && gpioC1 == HIGH && (millis() - lastSwitchTime > 250))) {
             destination = 0xbb;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2192,10 +2195,11 @@ void loop() {
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
+            lastSwitchTime = millis();
             clearValues();
         }
 
-        if ((gpioV1Cal < 2.8 && tally_bb == HIGH && gpioC1 == LOW)) {
+        if ((gpioV1Cal < 2.8 && tally_bb == HIGH && gpioC1 == LOW && (millis() - lastSwitchTime > 250))) {
             destination = 0xbb;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2205,10 +2209,11 @@ void loop() {
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
+            lastSwitchTime = millis();
             clearValues();
         }
 
-        if ((gpioV2Cal > 2.8 && tally_cc == HIGH && gpioC2 == HIGH)) {
+        if ((gpioV2Cal > 2.8 && tally_cc == HIGH && gpioC2 == HIGH && (millis() - lastSwitchTime > 250))) {
             destination = 0xcc;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2218,10 +2223,11 @@ void loop() {
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
+            lastSwitchTime = millis();
             clearValues();
         }
 
-        if ((gpioV2Cal < 2.8 && tally_cc == HIGH && gpioC2 == LOW)) {
+        if ((gpioV2Cal < 2.8 && tally_cc == HIGH && gpioC2 == LOW && (millis() - lastSwitchTime > 250))) {
             destination = 0xcc;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2231,10 +2237,11 @@ void loop() {
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
+            lastSwitchTime = millis();
             clearValues();
         }
 
-        if ((gpioV3Cal > 2.8 && tally_dd == HIGH && gpioC3 == HIGH)) {
+        if ((gpioV3Cal > 2.8 && tally_dd == HIGH && gpioC3 == HIGH && (millis() - lastSwitchTime > 250))) {
             destination = 0xdd;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2244,10 +2251,11 @@ void loop() {
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
+            lastSwitchTime = millis();
             clearValues();
         }
 
-        if ((gpioV3Cal < 2.8 && tally_dd == HIGH && gpioC3 == LOW)) {
+        if ((gpioV3Cal < 2.8 && tally_dd == HIGH && gpioC3 == LOW && (millis() - lastSwitchTime > 250))) {
             destination = 0xdd;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2257,10 +2265,11 @@ void loop() {
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
+            lastSwitchTime = millis();
             clearValues();
         }
 
-        if ((gpioV4Cal > 2.8 && tally_ee == HIGH && gpioC4 == HIGH)) {
+        if ((gpioV4Cal > 2.8 && tally_ee == HIGH && gpioC4 == HIGH && (millis() - lastSwitchTime > 250))) {
             destination = 0xee;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2270,10 +2279,11 @@ void loop() {
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
+            lastSwitchTime = millis();
             clearValues();
         }
 
-        if ((gpioV4Cal < 2.8 && tally_ee == HIGH && gpioC4 == LOW)) {
+        if ((gpioV4Cal < 2.8 && tally_ee == HIGH && gpioC4 == LOW && (millis() - lastSwitchTime > 250))) {
             destination = 0xee;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2283,6 +2293,7 @@ void loop() {
             mode = "acknowledge";
             mode_s = "ack";
             lastAckTime = millis();
+            lastSwitchTime = millis();
             clearValues();
         }
         lastAnalogReadTime = millis();
@@ -2290,67 +2301,212 @@ void loop() {
 
 
 
-
-
     // Request Mode TSL
-    if ((mode == "request") && (millis() - lastTslReadTime > 100) && (useTSL == true)) {
+    if ((mode == "request") && (millis() - lastTslReadTime > 500) && (useTSL == true)) {
 
         if (ethConnected) {
             
             if (udp.parsePacket() > 0) {
 
-                while (udp.available()) {
+                if (udp.available()) {
 
-                    udp.readBytesUntil('\n', buf_udpDiag, 12);
+                    Serial.print("UDP DATAGRAM: ");
+                    int udp_len = udp.available();
 
+                    for(int i = 0; i < udp_len; i++) {
+                        int udp_dec = udp.read();
+                        
+                        udp_seq[i] = {udp_dec};
+
+                        Serial.print(udp_seq[i]); Serial.print(" ");
+
+                        //Serial.print(udp_dec, HEX); Serial.print(" ");
+                    }
+
+                
                     //udpDatagram = udp.read();
+                    //Serial.print(udpDatagram);
+
+                    
+                    //tsl_UDP = udp.readString();
+                    //tsl_UDP.trim(); 
+
                     notSend = false;
                 }
+
                 if (!udp.available() && notSend == false) {
-                    Serial.print("buf_udpDiag: "); Serial.println(buf_udpDiag);
+
+                    //Serial.print("tsl_UDP: "); Serial.println(tsl_UDP);
+                    Serial.println(" ");
                     notSend = true;
                 }
             }
 
             //tally bb off
-            if (buf_udpDiag == "8ABCDEFG") {
+            if (((udp_seq[0] == 128) && (udp_seq[1] == 48) && (udp_seq[2] == 65) && (udp_seq[3] == 66) && (udp_seq[4] == 67) && (udp_seq[5] == 68) & (udp_seq[6] == 69) && (udp_seq[7] == 70) && (udp_seq[8] == 71) && (millis() - lastSwitchTime > 250))) {
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x00;
                 receiverColor = 0x00;
                 sendMessage();
-                gpioC1 = !gpioC1;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
 
             //tally bb green
-            if (buf_udpDiag == "81ABCDEFG") {
+            if (((udp_seq[0] == 128) && (udp_seq[1] == 49) && (udp_seq[2] == 65) && (udp_seq[3] == 66) && (udp_seq[4] == 67) && (udp_seq[5] == 68) & (udp_seq[6] == 69) && (udp_seq[7] == 70) && (udp_seq[8] == 71) && (millis() - lastSwitchTime > 250))) {
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x02;
                 sendMessage();
-                gpioC1 = !gpioC1;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
 
             //tally bb red
-            if (buf_udpDiag == "83ABCDEFG") {
+            if (((udp_seq[0] == 128) && (udp_seq[1] == 51) && (udp_seq[2] == 65) && (udp_seq[3] == 66) && (udp_seq[4] == 67) && (udp_seq[5] == 68) & (udp_seq[6] == 69) && (udp_seq[7] == 70) && (udp_seq[8] == 71) && (millis() - lastSwitchTime > 250))) {
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x01;
                 sendMessage();
-                gpioC1 = !gpioC1;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally cc off
+            if (((udp_seq[0] == 129) && (udp_seq[1] == 48) && (udp_seq[2] == 65) && (udp_seq[3] == 66) && (udp_seq[4] == 67) && (udp_seq[5] == 68) & (udp_seq[6] == 69) && (udp_seq[7] == 70) && (udp_seq[8] == 71) && (millis() - lastSwitchTime > 250))) {
+                destination = 0xcc;
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally cc green
+            if (((udp_seq[0] == 129) && (udp_seq[1] == 49) && (udp_seq[2] == 65) && (udp_seq[3] == 66) && (udp_seq[4] == 67) && (udp_seq[5] == 68) & (udp_seq[6] == 69) && (udp_seq[7] == 70) && (udp_seq[8] == 71) && (millis() - lastSwitchTime > 250))) {
+                destination = 0xcc;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x02;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally cc red
+            if (((udp_seq[0] == 129) && (udp_seq[1] == 51) && (udp_seq[2] == 65) && (udp_seq[3] == 66) && (udp_seq[4] == 67) && (udp_seq[5] == 68) & (udp_seq[6] == 69) && (udp_seq[7] == 70) && (udp_seq[8] == 71) && (millis() - lastSwitchTime > 250))) {
+                destination = 0xcc;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally dd off
+            if (((udp_seq[0] == 130) && (udp_seq[1] == 48) && (udp_seq[2] == 65) && (udp_seq[3] == 66) && (udp_seq[4] == 67) && (udp_seq[5] == 68) & (udp_seq[6] == 69) && (udp_seq[7] == 70) && (udp_seq[8] == 71) && (millis() - lastSwitchTime > 250))) {
+                destination = 0xdd;
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally dd green
+            if (((udp_seq[0] == 130) && (udp_seq[1] == 49) && (udp_seq[2] == 65) && (udp_seq[3] == 66) && (udp_seq[4] == 67) && (udp_seq[5] == 68) & (udp_seq[6] == 69) && (udp_seq[7] == 70) && (udp_seq[8] == 71) && (millis() - lastSwitchTime > 250))) {
+                destination = 0xdd;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x02;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally dd red
+            if (((udp_seq[0] == 130) && (udp_seq[1] == 51) && (udp_seq[2] == 65) && (udp_seq[3] == 66) && (udp_seq[4] == 67) && (udp_seq[5] == 68) & (udp_seq[6] == 69) && (udp_seq[7] == 70) && (udp_seq[8] == 71) && (millis() - lastSwitchTime > 250))) {
+                destination = 0xdd;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally ee off
+            if (((udp_seq[0] == 131) && (udp_seq[1] == 48) && (udp_seq[2] == 65) && (udp_seq[3] == 66) && (udp_seq[4] == 67) && (udp_seq[5] == 68) & (udp_seq[6] == 69) && (udp_seq[7] == 70) && (udp_seq[8] == 71) && (millis() - lastSwitchTime > 250))) {
+                destination = 0xee;
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally ee green
+            if (((udp_seq[0] == 131) && (udp_seq[1] == 49) && (udp_seq[2] == 65) && (udp_seq[3] == 66) && (udp_seq[4] == 67) && (udp_seq[5] == 68) & (udp_seq[6] == 69) && (udp_seq[7] == 70) && (udp_seq[8] == 71) && (millis() - lastSwitchTime > 250))) {
+                destination = 0xee;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x02;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally ee red
+            if (((udp_seq[0] == 131) && (udp_seq[1] == 51) && (udp_seq[2] == 65) && (udp_seq[3] == 66) && (udp_seq[4] == 67) && (udp_seq[5] == 68) & (udp_seq[6] == 69) && (udp_seq[7] == 70) && (udp_seq[8] == 71) && (millis() - lastSwitchTime > 250))) {
+                destination = 0xee;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
 
@@ -2359,7 +2515,6 @@ void loop() {
 
         lastTslReadTime = millis();
     }
-
 
 
 
@@ -2373,11 +2528,16 @@ void loop() {
             mode = "request";
             mode_s = "req";
             clearValues();
+
+            for(int i = 0; i < 32; i++) {       //clear UDP Sequence
+                udp_seq[i] = {0};
+            }
+
             break;
         }
 
     // Toggel and Resend Message, if ACK not arrived after 2 secounds
-    if ((millis() - lastAckTime > 2000) && (counterSend < counterSendMax)) {
+    if ((millis() - lastAckTime > 2000) && (counterSend < counterSendMax) && (useTSL == false)) {
         clearValues();
         mode = "request";
         mode_s = "req";
@@ -2390,13 +2550,37 @@ void loop() {
     }
 
     // Aborting the routine after 3 failed trys
-    if ((counterSend == counterSendMax)) {
+    if ((counterSend == counterSendMax) && (useTSL == false)) {
         clearValues();
         mode = "request";
         mode_s = "req";
         counterSend = 0;
         break;
     }
+
+    // Toggel and Resend Message, if ACK not arrived after 2 secounds
+    if ((millis() - lastAckTime > 2000) && (counterSendTsl < counterSendMax) && (useTSL == true)) {
+        clearValues();
+        mode = "request";
+        mode_s = "req";
+        counterSendTsl++;
+        break;
+    }
+
+    // Aborting the routine after 3 failed trys
+    if ((counterSendTsl == counterSendMax) && (useTSL == true)) {
+        clearValues();
+        mode = "request";
+        mode_s = "req";
+        counterSendTsl = 0;
+
+        for(int i = 0; i < 32; i++) {       //clear UDP Sequence
+                udp_seq[i] = {0};
+        }
+
+        break;
+    }
+
     }
 
     // Control Mode BB after discover and 3 - 3.5 minutes or if BB offline, control after 9 minutes
