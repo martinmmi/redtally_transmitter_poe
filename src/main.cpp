@@ -55,8 +55,6 @@ String wifipassword = "myPASSWORD";
 String www_username = "admin";
 String www_password = "admin";
 
-char buf_udpDiag[18];
-
 char buf_rssi[4];
 char buf_version[5];
 char buf_localAddress[5];
@@ -114,7 +112,10 @@ char buf_html_snm[32];
 char buf_html_dns1[32];
 char buf_html_dns2[32];
 
+int udp_seqseq[32] = {};
 int udp_seq[32] = {};
+int udp_s[32] = {};
+int tally_seq[32] = {};
 
 const char* param_ip = "input1";
 const char* param_gw = "input2";
@@ -186,6 +187,7 @@ int int_snOctet1, int_snOctet2, int_snOctet3, int_snOctet4;
 int int_dns1Octet1, int_dns1Octet2, int_dns1Octet3, int_dns1Octet4;
 int int_dns2Octet1, int_dns2Octet2, int_dns2Octet3, int_dns2Octet4;
 int buf_rssi_bb_int = 0;
+int tally_seq_counter = 0;
 
 ///////////////////////////////////////////////
 //////////// Setup LORA Values ////////////////
@@ -205,21 +207,21 @@ double loraFrequenz = 868E6;            //set Frequenz 915E6 or 868E6
 
 float gpioV1Cal, gpioV2Cal, gpioV3Cal, gpioV4Cal;
 
-bool gpioC1 = HIGH;
-bool gpioC2 = HIGH;
-bool gpioC3 = HIGH;
-bool gpioC4 = HIGH;
-bool tally_bb = LOW; 
-bool tally_cc = LOW; 
-bool tally_dd = LOW; 
-bool tally_ee = LOW; 
-bool tally_bb_init = LOW; 
-bool tally_cc_init = LOW; 
-bool tally_dd_init = LOW; 
-bool tally_ee_init = LOW;
-bool initBattery = HIGH;
-bool batteryAttention = LOW;
-bool batteryAttentionState = LOW;
+bool gpioC1 = true;
+bool gpioC2 = true;
+bool gpioC3 = true;
+bool gpioC4 = true;
+bool tally_bb = false; 
+bool tally_cc = false; 
+bool tally_dd = false; 
+bool tally_ee = false; 
+bool tally_bb_init = false; 
+bool tally_cc_init = false; 
+bool tally_dd_init = false; 
+bool tally_ee_init = false;
+bool initBattery = true;
+bool batteryAttention = false;
+bool batteryAttentionState = false;
 bool ethConnected = false;
 bool useSTATIC = false;
 bool useWLAN = false;
@@ -236,6 +238,7 @@ bool errorip = false;
 bool notempty = false;
 bool errortxp = false;
 bool notSend = false;
+bool first_udp_seq = true;
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -2310,47 +2313,134 @@ void loop() {
 
                 if (udp.available()) {
 
-                    Serial.print("UDP DATAGRAM: ");
+                    //Serial.print("UDP DATAGRAM: ");
                     int udp_len = udp.available();
 
                     for(int i = 0; i < udp_len; i++) {
                         int udp_dec = udp.read();
-                        
-                        udp_seq[i] = {udp_dec};
 
-                        /*
-                        if ((udp_seq[0] != 165) || (udp_seq[0] != 166)) {
-                            udp_seq[0] = {0};
-                            break;
+                        udp_s[i] = {udp_dec};
+
+                        if ((udp_s[0] == 165) || (udp_s[0] == 166)) {
+
+                            if (first_udp_seq == true) {
+                                Serial.print("UDP DATAGRAM: ");
+                                first_udp_seq = false;
+                            }
+                            udp_seqseq[i] = {udp_s[i]};
+                            udp_seq[i] = {udp_s[i]};
+                            Serial.print(udp_seq[i]); Serial.print(" ");
                         }
-                        */
 
-                        Serial.print(udp_seq[i]); Serial.print(" ");
+                        //Serial.print(udp_s[i]); Serial.print(" ");
 
-                        //Serial.print(udp_dec, HEX); Serial.print(" ");
                     }
-
-                
-                    //udpDatagram = udp.read();
-                    //Serial.print(udpDatagram);
-
-                    
-                    //tsl_UDP = udp.readString();
-                    //tsl_UDP.trim(); 
 
                     notSend = false;
                 }
 
-                if (!udp.available() && notSend == false) {
+                if ((!udp.available()) && ((udp_s[0] == 165) || (udp_s[0] == 166)) && (notSend == false)) {
 
-                    //Serial.print("tsl_UDP: "); Serial.println(tsl_UDP);
                     Serial.println(" ");
                     notSend = true;
+                    first_udp_seq = true;
                 }
             }
 
+
+
+            //green
+            if (((tally_bb == true) && (udp_seqseq[0] == 166) && (udp_seqseq[1] == 49) && (udp_seqseq[2] == 49) && (udp_seqseq[3] == 32))){
+                tally_seq[tally_seq_counter] = {11};
+                tally_seq_counter++;
+                for(int i = 0; i < 32; i++) {       //clear UDP Sequence
+                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    udp_seqseq[i] = {0};
+                }
+                Serial.println(" ");
+            }
+
+            if (((tally_cc == true) && (udp_seqseq[0] == 166) && (udp_seqseq[1] == 49) && (udp_seqseq[2] == 50) && (udp_seqseq[3] == 32))){
+                tally_seq[tally_seq_counter] = {12};
+                tally_seq_counter++;
+                for(int i = 0; i < 32; i++) {       //clear UDP Sequence
+                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    udp_seqseq[i] = {0};
+                }
+                Serial.println(" ");
+            }
+
+            if (((tally_dd == true) && (udp_seqseq[0] == 166) && (udp_seqseq[1] == 49) && (udp_seqseq[2] == 51) && (udp_seqseq[3] == 32))){
+                tally_seq[tally_seq_counter] = {13};
+                tally_seq_counter++;
+                for(int i = 0; i < 32; i++) {       //clear UDP Sequence
+                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    udp_seqseq[i] = {0};
+                }
+                Serial.println(" ");
+            }
+
+            if (((tally_ee == true) && (udp_seqseq[0] == 166) && (udp_seqseq[1] == 49) && (udp_seqseq[2] == 52) && (udp_seqseq[3] == 32))){
+                tally_seq[tally_seq_counter] = {14};
+                tally_seq_counter++;
+                for(int i = 0; i < 32; i++) {       //clear UDP Sequence
+                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    udp_seqseq[i] = {0};
+                }
+                Serial.println(" ");
+            }
+
+
+
+            //red
+            if (((tally_bb == true) && (udp_seqseq[0] == 165) && (udp_seqseq[1] == 50) && (udp_seqseq[2] == 49) && (udp_seqseq[3] == 32))){
+                tally_seq[tally_seq_counter] = {21};
+                tally_seq_counter++;
+                for(int i = 0; i < 32; i++) {       //clear UDP Sequence
+                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    udp_seqseq[i] = {0};
+                }
+                Serial.println(" ");
+            }
+
+            if (((tally_cc == true) && (udp_seqseq[0] == 165) && (udp_seqseq[1] == 50) && (udp_seqseq[2] == 50) && (udp_seqseq[3] == 32))){
+                tally_seq[tally_seq_counter] = {22};
+                tally_seq_counter++;
+                for(int i = 0; i < 32; i++) {       //clear UDP Sequence
+                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    udp_seqseq[i] = {0};
+                }
+                Serial.println(" ");
+            }
+
+            if (((tally_dd == true) && (udp_seqseq[0] == 165) && (udp_seqseq[1] == 50) && (udp_seqseq[2] == 51) && (udp_seqseq[3] == 32))){
+                tally_seq[tally_seq_counter] = {23};
+                tally_seq_counter++;
+                for(int i = 0; i < 32; i++) {       //clear UDP Sequence
+                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    udp_seqseq[i] = {0};
+                }
+                Serial.println(" ");
+            }
+
+            if (((tally_ee == true) && (udp_seqseq[0] == 165) && (udp_seqseq[1] == 50) && (udp_seqseq[2] == 52) && (udp_seqseq[3] == 32))){
+                tally_seq[tally_seq_counter] = {24};
+                tally_seq_counter++;
+                for(int i = 0; i < 32; i++) {       //clear UDP Sequence
+                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    udp_seqseq[i] = {0};
+                }
+                Serial.println(" ");
+            }
+
+            
+
+            
+
+
+            /*
             //tally bb off
-            if (((((udp_seq[0] == 166) && (udp_seq[1] == 49) && (52 >= udp_seq[2] > 49) && (udp_seq[3] == 32)) || ((udp_seq[0] == 166) && (udp_seq[1] == 50) && (52 >= udp_seq[2] > 49) && (udp_seq[3] == 32))) && (millis() - lastSwitchTime > 100))) {
+            if ((tally_bb == true) && ((tally_seq[tally_seq_counter-3] == 11) || (tally_seq[tally_seq_counter-3] == 21))) {
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2362,9 +2452,10 @@ void loop() {
                 lastSwitchTime = millis();
                 clearValues();
             }
+            */
 
             //tally bb green
-            if (((udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 49) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_bb == true) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 49) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2378,7 +2469,7 @@ void loop() {
             }
 
             //tally bb red
-            if (((udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 49) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_bb == true) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 49) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2391,8 +2482,9 @@ void loop() {
                 clearValues();
             }
 
+            /*
             //tally cc off
-            if (((((udp_seq[0] == 166) && (udp_seq[1] == 49) && ((52 >= udp_seq[2] >= 51) || (udp_seq[2] == 49)) && (udp_seq[3] == 32)) || ((udp_seq[0] == 166) && (udp_seq[1] == 50) && ((52 >= udp_seq[2] >= 51) || (udp_seq[2] == 49)) && (udp_seq[3] == 32))) && (millis() - lastSwitchTime > 100))) {
+            if ((tally_cc == true) && ((tally_seq[tally_seq_counter-3] == 12) || (tally_seq[tally_seq_counter-3] == 22))) {
                 receiverMode = 0x03;
                 receiverState = 0x00;
                 receiverColor = 0x00;
@@ -2403,9 +2495,10 @@ void loop() {
                 lastSwitchTime = millis();
                 clearValues();
             }
+            */
 
             //tally cc green
-            if (((udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 50) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_cc == true) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 50) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xcc;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2419,7 +2512,7 @@ void loop() {
             }
 
             //tally cc red
-            if (((udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 50) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_cc == true) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 50) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xcc;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2431,9 +2524,10 @@ void loop() {
                 lastSwitchTime = millis();
                 clearValues();
             }
-
+            
+            /*
             //tally dd off
-            if (((((udp_seq[0] == 166) && (udp_seq[1] == 49) && ((udp_seq[2] == 52) || ( 50 >= udp_seq[2] >= 49)) && (udp_seq[3] == 32)) || ((udp_seq[0] == 166) && (udp_seq[1] == 50) && ((udp_seq[2] == 52) || ( 50 >= udp_seq[2] >= 49)) && (udp_seq[3] == 32))) && (millis() - lastSwitchTime > 100))) {
+            if ((tally_dd == true) && ((tally_seq[tally_seq_counter-3] == 13) || (tally_seq[tally_seq_counter-3] == 23))) {
                 destination = 0xdd;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2445,9 +2539,10 @@ void loop() {
                 lastSwitchTime = millis();
                 clearValues();
             }
+            */
 
             //tally dd green
-            if (((udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 51) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_dd == true) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 51) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xdd;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2461,7 +2556,7 @@ void loop() {
             }
 
             //tally dd red
-            if (((udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 51) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_dd == true) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 51) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xdd;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2474,8 +2569,9 @@ void loop() {
                 clearValues();
             }
 
+            /*
             //tally ee off
-            if (((((udp_seq[0] == 166) && (udp_seq[1] == 49) && (51 >= udp_seq[2] >= 49) && (udp_seq[3] == 32)) || ((udp_seq[0] == 166) && (udp_seq[1] == 50) && (51 >= udp_seq[2] >= 49) && (udp_seq[3] == 32))) && (millis() - lastSwitchTime > 100))) {
+            if ((tally_ee == true) && ((tally_seq[tally_seq_counter-3] == 14) || (tally_seq[tally_seq_counter-3] == 24))) {
                 destination = 0xee;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2487,9 +2583,10 @@ void loop() {
                 lastSwitchTime = millis();
                 clearValues();
             }
+            */
 
             //tally ee green
-            if (((udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 52) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_ee == true) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 52) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xee;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2503,7 +2600,7 @@ void loop() {
             }
 
             //tally ee red
-            if (((udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 52) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_ee == true) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 52) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xee;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2535,6 +2632,7 @@ void loop() {
             mode_s = "req";
             clearValues();
 
+            
             for(int i = 0; i < 32; i++) {       //clear UDP Sequence
                 udp_seq[i] = {0};
             }
