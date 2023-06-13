@@ -171,6 +171,7 @@ unsigned long lastAnalogReadTime = 0;
 unsigned long lastDisplayPrint = 0;
 unsigned long lastTslReadTime = 0;
 unsigned long lastAuthentication = 0;
+unsigned long lastSerialPrint = 0;
 
 int defaultBrightnessDisplay = 255;   // value from 1 to 255
 int counterSend = 0;
@@ -2415,6 +2416,11 @@ void loop() {
                     notSend = true;
                     first_udp_seq = true;
                 }
+            }
+
+            if ((millis() - lastSerialPrint > 2000)) {      // print
+                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
+                lastSerialPrint = millis();
             }
 
 
