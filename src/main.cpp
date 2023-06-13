@@ -30,7 +30,8 @@
 #endif
 
 WiFiUDP udp;
-const int udpPort = 5727;
+int udpPort = 5727;
+int udpPortNew;
 
 String mode = "discover";
 String mode_s = "dis";
@@ -105,6 +106,8 @@ char buf_loraCodingRate[4];
 char buf_loraPreambleLength[8];
 char buf_txpower[4];
 char buf_connectedTallys[4];
+char buf_udpPort[5];
+char buf_udpPort_state[5];
 
 char buf_html_ip[32];
 char buf_html_gw[32];
@@ -115,7 +118,8 @@ char buf_html_dns2[32];
 int udp_seqseq[32] = {};
 int udp_seq[32] = {};
 int udp_s[32] = {};
-int tally_seq[32] = {};
+int tally_seq_red[32] = {};
+int tally_seq_green[32] = {};
 
 const char* param_ip = "input1";
 const char* param_gw = "input2";
@@ -129,6 +133,7 @@ const char* param_new_user = "inputNewUser";
 const char* param_new_password = "inputNewPassword";
 const char* param_ssid = "inputSSID";
 const char* param_wifipassword = "inputWLANPASSWORD";
+const char* param_udpport = "inputUdpPort";
 
 ///////////////////////////////////////////////
 ///////// Setup Transmitter Values ////////////
@@ -187,7 +192,8 @@ int int_snOctet1, int_snOctet2, int_snOctet3, int_snOctet4;
 int int_dns1Octet1, int_dns1Octet2, int_dns1Octet3, int_dns1Octet4;
 int int_dns2Octet1, int_dns2Octet2, int_dns2Octet3, int_dns2Octet4;
 int buf_rssi_bb_int = 0;
-int tally_seq_counter = 0;
+int tally_seq_counter_green = 0;
+int tally_seq_counter_red = 0;
 
 ///////////////////////////////////////////////
 //////////// Setup LORA Values ////////////////
@@ -225,10 +231,10 @@ bool batteryAttentionState = false;
 bool ethConnected = false;
 bool useSTATIC = false;
 bool useWLAN = false;
-bool useTSL = false;
+bool useTSL = true;
 bool bool_res = false;
 bool bool_esm = false;
-bool bool_tsl = false;
+bool bool_tsl = true;
 bool ethState = false;
 bool loraInit = false;
 bool sdInit = false;
@@ -237,6 +243,7 @@ bool authenticated = false;
 bool errorip = false;
 bool notempty = false;
 bool errortxp = false;
+bool errorport = false;
 bool notSend = false;
 bool first_udp_seq = true;
 
@@ -438,6 +445,11 @@ String proc_state(const String& state){
             html_state_tsl = "GPIO";
         }
         return html_state_tsl;
+    }
+
+    if(state == "STATE_UDP_PORT"){      
+        sprintf(buf_udpPort_state, "%d", udpPort);  
+        return buf_udpPort_state;
     }
 
     if(state == "STATE_VERSION"){
@@ -1161,7 +1173,7 @@ void setup() {
     */
 
     eeprom.begin("network", false);                //false mean use read/write mode
-    useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
+    useSTATIC = eeprom.getBool("dhcp", true);     //false mean default value if nothing returned
     //Serial.print("useSTATIC: "); Serial.println(useSTATIC);
     ssid = eeprom.getString("ssid", ssid);
     wifipassword = eeprom.getString("wifipassword", wifipassword);
@@ -1175,7 +1187,7 @@ void setup() {
     useGWOctet4 = eeprom.getInt("gwOctet4", 1);  
     useSNOctet1 = eeprom.getInt("snOctet1", 255);
     useSNOctet2 = eeprom.getInt("snOctet2", 255);
-    useSNOctet3 = eeprom.getInt("snOctet3", 0);
+    useSNOctet3 = eeprom.getInt("snOctet3", 255);
     useSNOctet4 = eeprom.getInt("snOctet4", 0);  
     useDNS1Octet1 = eeprom.getInt("dns1Octet1", 1);
     useDNS1Octet2 = eeprom.getInt("dns1Octet2", 1);
@@ -1188,7 +1200,8 @@ void setup() {
     eeprom.end();
 
     eeprom.begin("configuration", false); 
-    bool_tsl = eeprom.getBool("tsl", false);        
+    bool_tsl = eeprom.getBool("tsl", true);                         //change default tsl
+    udpPort = eeprom.getInt("udpport", udpPort);     
     bool_esm = eeprom.getBool("esm", false);
     loraTxPower = eeprom.getInt("txpower", loraTxPower);            //if the eeprom is never written, then give the default value back
     
@@ -1777,6 +1790,62 @@ void setup() {
     });
 
     // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
+    server.on("/get-port", HTTP_GET, [] (AsyncWebServerRequest *request) {
+        if (authenticated == true) {
+            String input_port;
+            String input_param_port;
+
+            // GET input6 value on <ESP_IP>/get?input6=<inputMessage>
+            if (request->hasParam(param_udpport)) {
+            input_port = request->getParam(param_udpport)->value();
+            input_param_port = param_udpport;
+            }
+            // If empty, print no message
+            if (request->hasParam("")) {
+            input_port = "No message sent";
+            input_param_port = "none";
+            }
+
+            errorport = false;
+
+            if(input_port != "") {
+                sprintf(buf_udpPort, "%s", input_port);
+                udpPortNew = atoi(buf_udpPort);
+
+                Serial.print("New UDP Port: "); Serial.println(udpPortNew);
+
+                if ((udpPortNew < 999) || (udpPortNew > 10000)) {
+                    Serial.println("ERROR!");
+                    errorport = true;
+                }
+                else {
+
+                    if (udpPortNew != udpPort) {
+
+                        eeprom.begin("configuration", false);                //false mean use read/write mode
+                        eeprom.putInt("udpport", udpPortNew);     
+                        eeprom.end(); 
+
+                        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+                        delay(2000);
+                        ESP.restart();
+                    } else{
+                        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+                    }
+
+                }
+            }
+
+            if(input_port == "" || errorport == true) {
+                request->send(SPIFFS, "/formaterror.html", String(), false, proc_state);
+            }
+
+        } else {
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
+        }
+    });
+
+    // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
     server.on("/user-change", HTTP_GET, [] (AsyncWebServerRequest *request) {
         if (authenticated == true) {
             String input_new_username, input_new_password;
@@ -2158,7 +2227,7 @@ void loop() {
         }
   
     // Request Mode GPIO
-    if ((mode == "request") && (millis() - lastAnalogReadTime > 500) && (useTSL == false)) {
+    if ((mode == "request") && (millis() - lastAnalogReadTime > 300) && (useTSL == false)) {
 
         gpioV1 = analogRead(gpioP1);
         gpioV2 = analogRead(gpioP2);
@@ -2305,7 +2374,7 @@ void loop() {
 
 
     // Request Mode TSL
-    if ((mode == "request") && (millis() - lastTslReadTime > 200) && (useTSL == true)) {
+    if ((mode == "request") && (millis() - lastTslReadTime > 300) && (useTSL == true)) {
 
         if (ethConnected) {
             
@@ -2327,6 +2396,7 @@ void loop() {
                                 Serial.print("UDP DATAGRAM: ");
                                 first_udp_seq = false;
                             }
+                            
                             udp_seqseq[i] = {udp_s[i]};
                             udp_seq[i] = {udp_s[i]};
                             Serial.print(udp_seq[i]); Serial.print(" ");
@@ -2351,41 +2421,53 @@ void loop() {
 
             //green
             if (((tally_bb == true) && (udp_seqseq[0] == 166) && (udp_seqseq[1] == 49) && (udp_seqseq[2] == 49) && (udp_seqseq[3] == 32))){
-                tally_seq[tally_seq_counter] = {11};
-                tally_seq_counter++;
+                tally_seq_green[tally_seq_counter_green] = {11};
+                tally_seq_counter_green++;
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    Serial.print(tally_seq_green[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
+                }
+                if (tally_seq_counter_green >= 32) {
+                    tally_seq_counter_green = 0;
                 }
                 Serial.println(" ");
             }
 
             if (((tally_cc == true) && (udp_seqseq[0] == 166) && (udp_seqseq[1] == 49) && (udp_seqseq[2] == 50) && (udp_seqseq[3] == 32))){
-                tally_seq[tally_seq_counter] = {12};
-                tally_seq_counter++;
+                tally_seq_green[tally_seq_counter_green] = {12};
+                tally_seq_counter_green++;
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    Serial.print(tally_seq_green[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
+                }
+                if (tally_seq_counter_green >= 32) {
+                    tally_seq_counter_green = 0;
                 }
                 Serial.println(" ");
             }
 
             if (((tally_dd == true) && (udp_seqseq[0] == 166) && (udp_seqseq[1] == 49) && (udp_seqseq[2] == 51) && (udp_seqseq[3] == 32))){
-                tally_seq[tally_seq_counter] = {13};
-                tally_seq_counter++;
+                tally_seq_green[tally_seq_counter_green] = {13};
+                tally_seq_counter_green++;
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    Serial.print(tally_seq_green[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
+                }
+                if (tally_seq_counter_green >= 32) {
+                    tally_seq_counter_green = 0;
                 }
                 Serial.println(" ");
             }
 
             if (((tally_ee == true) && (udp_seqseq[0] == 166) && (udp_seqseq[1] == 49) && (udp_seqseq[2] == 52) && (udp_seqseq[3] == 32))){
-                tally_seq[tally_seq_counter] = {14};
-                tally_seq_counter++;
+                tally_seq_green[tally_seq_counter_green] = {14};
+                tally_seq_counter_green++;
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    Serial.print(tally_seq_green[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
+                }
+                if (tally_seq_counter_green >= 32) {
+                    tally_seq_counter_green = 0;
                 }
                 Serial.println(" ");
             }
@@ -2394,53 +2476,68 @@ void loop() {
 
             //red
             if (((tally_bb == true) && (udp_seqseq[0] == 165) && (udp_seqseq[1] == 50) && (udp_seqseq[2] == 49) && (udp_seqseq[3] == 32))){
-                tally_seq[tally_seq_counter] = {21};
-                tally_seq_counter++;
+                tally_seq_red[tally_seq_counter_red] = {21};
+                tally_seq_counter_red++;
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    Serial.print(tally_seq_red[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
                 }
+                if (tally_seq_counter_red >= 32) {
+                    tally_seq_counter_red = 0;
+                }
                 Serial.println(" ");
+                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
             }
 
             if (((tally_cc == true) && (udp_seqseq[0] == 165) && (udp_seqseq[1] == 50) && (udp_seqseq[2] == 50) && (udp_seqseq[3] == 32))){
-                tally_seq[tally_seq_counter] = {22};
-                tally_seq_counter++;
+                tally_seq_red[tally_seq_counter_red] = {22};
+                tally_seq_counter_red++;
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    Serial.print(tally_seq_red[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
                 }
+                if (tally_seq_counter_red >= 32) {
+                    tally_seq_counter_red = 0;
+                }
                 Serial.println(" ");
+                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
             }
 
             if (((tally_dd == true) && (udp_seqseq[0] == 165) && (udp_seqseq[1] == 50) && (udp_seqseq[2] == 51) && (udp_seqseq[3] == 32))){
-                tally_seq[tally_seq_counter] = {23};
-                tally_seq_counter++;
+                tally_seq_red[tally_seq_counter_red] = {23};
+                tally_seq_counter_red++;
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    Serial.print(tally_seq_red[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
                 }
+                if (tally_seq_counter_red >= 32) {
+                    tally_seq_counter_red = 0;
+                }
                 Serial.println(" ");
+                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
             }
 
             if (((tally_ee == true) && (udp_seqseq[0] == 165) && (udp_seqseq[1] == 50) && (udp_seqseq[2] == 52) && (udp_seqseq[3] == 32))){
-                tally_seq[tally_seq_counter] = {24};
-                tally_seq_counter++;
+                tally_seq_red[tally_seq_counter_red] = {24};
+                tally_seq_counter_red++;
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq[i]); Serial.print(" ");
+                    Serial.print(tally_seq_red[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
                 }
+                if (tally_seq_counter_red >= 32) {
+                    tally_seq_counter_red = 0;
+                }
                 Serial.println(" ");
+                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
             }
 
             
 
             
 
-
-            /*
+            
             //tally bb off
-            if ((tally_bb == true) && ((tally_seq[tally_seq_counter-3] == 11) || (tally_seq[tally_seq_counter-3] == 21))) {
+            if ((tally_bb == true) && ((tally_seq_green[tally_seq_counter_green-2] == 11) || (tally_seq_red[tally_seq_counter_red-3] == 21)) && ((tally_seq_red[tally_seq_counter_red-1] != 21) || (tally_seq_red[tally_seq_counter_red-2] != 21)) && ((tally_seq_red[tally_seq_counter_red-1] != 91) || (tally_seq_red[tally_seq_counter_red-2] != 91)) && (millis() - lastSwitchTime > 100)) {
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2452,7 +2549,6 @@ void loop() {
                 lastSwitchTime = millis();
                 clearValues();
             }
-            */
 
             //tally bb green
             if (((tally_bb == true) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 49) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
@@ -2481,10 +2577,9 @@ void loop() {
                 lastSwitchTime = millis();
                 clearValues();
             }
-
-            /*
+            //////////////////////////////////
             //tally cc off
-            if ((tally_cc == true) && ((tally_seq[tally_seq_counter-3] == 12) || (tally_seq[tally_seq_counter-3] == 22))) {
+            if ((tally_cc == true) && ((tally_seq_green[tally_seq_counter_green-2] == 12) || (tally_seq_red[tally_seq_counter_red-3] == 22)) && ((tally_seq_red[tally_seq_counter_red-1] != 22) || (tally_seq_red[tally_seq_counter_red-2] != 22)) && ((tally_seq_red[tally_seq_counter_red-1] != 92) || (tally_seq_red[tally_seq_counter_red-2] != 92)) && (millis() - lastSwitchTime > 100)) {
                 receiverMode = 0x03;
                 receiverState = 0x00;
                 receiverColor = 0x00;
@@ -2495,7 +2590,6 @@ void loop() {
                 lastSwitchTime = millis();
                 clearValues();
             }
-            */
 
             //tally cc green
             if (((tally_cc == true) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 50) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
@@ -2525,9 +2619,8 @@ void loop() {
                 clearValues();
             }
             
-            /*
             //tally dd off
-            if ((tally_dd == true) && ((tally_seq[tally_seq_counter-3] == 13) || (tally_seq[tally_seq_counter-3] == 23))) {
+            if ((tally_dd == true) && ((tally_seq_green[tally_seq_counter_green-2] == 13) || (tally_seq_red[tally_seq_counter_red-3] == 23)) && ((tally_seq_red[tally_seq_counter_red-1] != 23) || (tally_seq_red[tally_seq_counter_red-2] != 23)) && ((tally_seq_red[tally_seq_counter_red-1] != 93) || (tally_seq_red[tally_seq_counter_red-2] != 93)) && (millis() - lastSwitchTime > 100)) {
                 destination = 0xdd;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2539,7 +2632,6 @@ void loop() {
                 lastSwitchTime = millis();
                 clearValues();
             }
-            */
 
             //tally dd green
             if (((tally_dd == true) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 51) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
@@ -2569,9 +2661,8 @@ void loop() {
                 clearValues();
             }
 
-            /*
             //tally ee off
-            if ((tally_ee == true) && ((tally_seq[tally_seq_counter-3] == 14) || (tally_seq[tally_seq_counter-3] == 24))) {
+            if ((tally_ee == true) && ((tally_seq_green[tally_seq_counter_green-2] == 14) || (tally_seq_red[tally_seq_counter_red-3] == 24)) && ((tally_seq_red[tally_seq_counter_red-1] != 24) || (tally_seq_red[tally_seq_counter_red-2] != 24)) && ((tally_seq_red[tally_seq_counter_red-1] != 94) || (tally_seq_red[tally_seq_counter_red-2] != 94)) && (millis() - lastSwitchTime > 100)) {
                 destination = 0xee;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2583,7 +2674,6 @@ void loop() {
                 lastSwitchTime = millis();
                 clearValues();
             }
-            */
 
             //tally ee green
             if (((tally_ee == true) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 52) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
@@ -2632,9 +2722,49 @@ void loop() {
             mode_s = "req";
             clearValues();
 
-            
-            for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                udp_seq[i] = {0};
+            if (useTSL == true) {
+                for(int i = 0; i < 32; i++) {       //clear UDP Sequence
+                    udp_seq[i] = {0};
+                }
+
+                if (tally_seq_green[tally_seq_counter_green-2] == 11) {
+                    tally_seq_green[tally_seq_counter_green-2] = {81};
+                }
+                
+                if (tally_seq_red[tally_seq_counter_red-3] == 21) {
+                    tally_seq_red[tally_seq_counter_red-3] = {91};
+                }
+
+                if (tally_seq_green[tally_seq_counter_green-2] == 12) {
+                    tally_seq_green[tally_seq_counter_green-2] = {82};
+                }
+                
+                if (tally_seq_red[tally_seq_counter_red-3] == 22) {
+                    tally_seq_red[tally_seq_counter_red-3] = {92};
+                }
+
+                if (tally_seq_green[tally_seq_counter_green-2] == 13) {
+                    tally_seq_green[tally_seq_counter_green-2] = {83};
+                }
+                
+                if (tally_seq_red[tally_seq_counter_red-3] == 23) {
+                    tally_seq_red[tally_seq_counter_red-3] = {93};
+                }
+
+                if (tally_seq_green[tally_seq_counter_green-2] == 14) {
+                    tally_seq_green[tally_seq_counter_green-2] = {84};
+                }
+                
+                if (tally_seq_red[tally_seq_counter_red-3] == 24) {
+                    tally_seq_red[tally_seq_counter_red-3] = {94};
+                }
+
+                for(int i = 0; i < 32; i++) {       //clear tally sequence red
+                    Serial.print(tally_seq_red[i]); Serial.print(" ");
+                }
+
+                Serial.println(" ");
+
             }
 
             break;
@@ -2681,6 +2811,44 @@ void loop() {
         for(int i = 0; i < 32; i++) {       //clear UDP Sequence
                 udp_seq[i] = {0};
         }
+
+        if (tally_seq_green[tally_seq_counter_green-2] == 11) {
+            tally_seq_green[tally_seq_counter_green-2] = {81};
+        }
+            
+        if (tally_seq_red[tally_seq_counter_red-3] == 21) {
+            tally_seq_red[tally_seq_counter_red-3] = {91};
+        }
+
+        if (tally_seq_green[tally_seq_counter_green-2] == 12) {
+            tally_seq_green[tally_seq_counter_green-2] = {82};
+        }
+        
+        if (tally_seq_red[tally_seq_counter_red-3] == 22) {
+            tally_seq_red[tally_seq_counter_red-3] = {92};
+        }
+
+        if (tally_seq_green[tally_seq_counter_green-2] == 13) {
+            tally_seq_green[tally_seq_counter_green-2] = {83};
+        }
+        
+        if (tally_seq_red[tally_seq_counter_red-3] == 23) {
+            tally_seq_red[tally_seq_counter_red-3] = {93};
+        }
+
+        if (tally_seq_green[tally_seq_counter_green-2] == 14) {
+            tally_seq_green[tally_seq_counter_green-2] = {84};
+        }
+        
+        if (tally_seq_red[tally_seq_counter_red-3] == 24) {
+            tally_seq_red[tally_seq_counter_red-3] = {94};
+        }
+
+        for(int i = 0; i < 32; i++) {       //clear tally sequence red
+            Serial.print(tally_seq_red[i]); Serial.print(" ");
+        }
+
+        Serial.println(" ");
 
         break;
     }
