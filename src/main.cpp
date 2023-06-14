@@ -2607,7 +2607,7 @@ void loop() {
             }
 
             //tally bb red off
-            if ((tally_bb == true) && (tslR1 == false) && (tally_seq_red[tally_seq_counter_red-2] == 21) && (millis() - lastSwitchTime > 100)) {
+            if ((tally_bb == true) && (tslR1 == false) && (tally_seq_red[tally_seq_counter_red-3] == 21) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("================================");
                 Serial.println("=BEFORE bb red off=");
                 Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
@@ -2699,7 +2699,7 @@ void loop() {
             }
 
             //tally cc red off
-            if ((tally_cc == true) && (tslR2 == false) && (tally_seq_red[tally_seq_counter_red-2] == 22) && (millis() - lastSwitchTime > 100)) {
+            if ((tally_cc == true) && (tslR2 == false) && (tally_seq_red[tally_seq_counter_red-3] == 22) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("================================");
                 Serial.println("=BEFORE cc red off=");
                 Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
@@ -2791,7 +2791,7 @@ void loop() {
             }
 
             //tally dd red off
-            if ((tally_dd == true) && (tslR3 == false) && (tally_seq_red[tally_seq_counter_red-2] == 23) && (millis() - lastSwitchTime > 100)) {
+            if ((tally_dd == true) && (tslR3 == false) && (tally_seq_red[tally_seq_counter_red-3] == 23) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("================================");
                 Serial.println("=BEFORE dd red off=");
                 Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
@@ -2883,7 +2883,7 @@ void loop() {
             }
 
             //tally ee red off
-            if ((tally_ee == true) && (tslR4 == false) && (tally_seq_red[tally_seq_counter_red-2] == 24) && (millis() - lastSwitchTime > 100)) {
+            if ((tally_ee == true) && (tslR4 == false) && (tally_seq_red[tally_seq_counter_red-3] == 24) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("================================");
                 Serial.println("=BEFORE ee red off=");
                 Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
