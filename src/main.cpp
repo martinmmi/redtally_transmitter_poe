@@ -247,6 +247,18 @@ bool errortxp = false;
 bool errorport = false;
 bool notSend = false;
 bool first_udp_seq = true;
+bool tslR1 = true;
+bool tslR11 = true;
+bool tslR2 = true;
+bool tslR22 = true;
+bool tslR3 = true;
+bool tslR33 = true;
+bool tslR4 = true;
+bool tslR44 = true;
+bool tslG1 = true;
+bool tslG2 = true;
+bool tslG3 = true;
+bool tslG4 = true;
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -300,7 +312,7 @@ Preferences eeprom;            //Initiate Flash Memory
 String proc_state(const String& state){
 
     if(state == "STATE_BB"){
-        if(tally_bb == HIGH) {
+        if(tally_bb == true) {
             html_state_bb = "ONLINE";
             }
             else{
@@ -310,7 +322,7 @@ String proc_state(const String& state){
     }
 
     if(state == "STATE_CC"){
-        if(tally_cc == HIGH) {
+        if(tally_cc == true) {
             html_state_cc = "ONLINE";
             }
             else{
@@ -320,7 +332,7 @@ String proc_state(const String& state){
     }
 
     if(state == "STATE_DD"){
-        if(tally_dd == HIGH) {
+        if(tally_dd == true) {
             html_state_dd = "ONLINE";
             }
             else{
@@ -330,7 +342,7 @@ String proc_state(const String& state){
     }
 
     if(state == "STATE_EE"){
-        if(tally_ee == HIGH) {
+        if(tally_ee == true) {
             html_state_ee = "ONLINE";
             }
             else{
@@ -666,13 +678,13 @@ void startSPI_SD() {
 
     SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);
     //SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));         
-    digitalWrite(SD_CS, LOW);
+    digitalWrite(SD_CS, false);
 
 }
 
 void closeSPI_SD() {
 
-    digitalWrite(SD_CS, HIGH);
+    digitalWrite(SD_CS, true);
     SPI.end();
     //SPI.endTransaction();
 
@@ -684,7 +696,7 @@ void startSPI_LORA() {
 
     SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI);   
     //SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));      
-    digitalWrite(LORA_CS, LOW);
+    digitalWrite(LORA_CS, false);
 
     LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
     LoRa.setTxPower(loraTxPower);
@@ -698,7 +710,7 @@ void startSPI_LORA() {
 
 void closeSPI_LORA() {
 
-    digitalWrite(LORA_CS, HIGH);
+    digitalWrite(LORA_CS, true);
     SPI.end();
     //SPI.endTransaction();
 
@@ -710,7 +722,7 @@ void startSPI_DISPLAY() {
 
     SPI.begin(DISPLAY_SCLK, DISPLAY_MISO, DISPLAY_MOSI); 
     //SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));    
-    digitalWrite(DISPLAY_CS, LOW);
+    digitalWrite(DISPLAY_CS, false);
 
     u8g2.begin();
     u8g2.clearBuffer();
@@ -722,7 +734,7 @@ void startSPI_DISPLAY() {
 
 void closeSPI_DISPLAY() {
 
-    digitalWrite(DISPLAY_CS, HIGH);
+    digitalWrite(DISPLAY_CS, true);
     SPI.end();
     //SPI.endTransaction();
 
@@ -1134,9 +1146,9 @@ void setup() {
     pinMode(LORA_CS, OUTPUT);                                   //CS LORA
     pinMode(DISPLAY_CS, OUTPUT);                                //CS Display
 
-    digitalWrite(SD_CS, HIGH);
-    digitalWrite(LORA_CS, HIGH);
-    digitalWrite(DISPLAY_CS, HIGH);
+    digitalWrite(SD_CS, true);
+    digitalWrite(LORA_CS, true);
+    digitalWrite(DISPLAY_CS, true);
 
     //pinMode(SD_MISO, INPUT_PULLUP);
 
@@ -1217,7 +1229,7 @@ void setup() {
 
     SPI.begin(SD_SCLK, SD_MISO, SD_MOSI);     
     //SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));    
-    digitalWrite(SD_CS, LOW);
+    digitalWrite(SD_CS, false);
 
     if (!SD.begin(SD_CS)) {                                                 // initialize sd card
         sdInit = false;   
@@ -1225,7 +1237,7 @@ void setup() {
         sdInit = true; 
     }
 
-    digitalWrite(SD_CS, HIGH);
+    digitalWrite(SD_CS, true);
     SPI.end();
     //SPI.endTransaction();
 
@@ -1233,7 +1245,7 @@ void setup() {
 
     SPI.begin(LORA_SCLK, LORA_MISO, LORA_MOSI);     
     //SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));    
-    digitalWrite(LORA_CS, LOW);
+    digitalWrite(LORA_CS, false);
 
     LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
     LoRa.setTxPower(loraTxPower);
@@ -1250,7 +1262,7 @@ void setup() {
         loraInit = true; 
     }
 
-    digitalWrite(LORA_CS, HIGH);
+    digitalWrite(LORA_CS, true);
     SPI.end();  
     //SPI.endTransaction();
 
@@ -1258,7 +1270,7 @@ void setup() {
 
     SPI.begin(DISPLAY_SCLK, DISPLAY_MISO, DISPLAY_MOSI);     
     //SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE1));    
-    digitalWrite(DISPLAY_CS, LOW); 
+    digitalWrite(DISPLAY_CS, false); 
 
     u8g2.begin();
     u8g2.clearBuffer();
@@ -1423,25 +1435,25 @@ void setup() {
             Serial.print("useSTATIC: "); Serial.println(useSTATIC);
             resFlag = 0x01;
 
-            if (tally_bb == HIGH){
+            if (tally_bb == true){
                 destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
                 receiverMode = 0x05;            // Send a message
                 sendMessage();         
                 delay(500);
             }
-            if (tally_cc == HIGH){
+            if (tally_cc == true){
                 destination = 0xcc;
                 receiverMode = 0x05;
                 sendMessage();
                 delay(500);
             }
-            if (tally_dd == HIGH){
+            if (tally_dd == true){
                 destination = 0xdd;
                 receiverMode = 0x05;
                 sendMessage();
                 delay(500);
             }
-            if (tally_ee == HIGH){
+            if (tally_ee == true){
                 destination = 0xee;
                 receiverMode = 0x05;
                 sendMessage();
@@ -1464,25 +1476,25 @@ void setup() {
             Serial.print("useSTATIC: "); Serial.println(useSTATIC);
             resFlag = 0x01;
 
-            if (tally_bb == HIGH){
+            if (tally_bb == true){
                 destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
                 receiverMode = 0x05;
                 sendMessage();
                 delay(500);
             }
-            if (tally_cc == HIGH){
+            if (tally_cc == true){
                 destination = 0xcc;
                 receiverMode = 0x05;
                 sendMessage();
                 delay(500);
             }
-            if (tally_dd == HIGH){
+            if (tally_dd == true){
                 destination = 0xdd;
                 receiverMode = 0x05;
                 sendMessage();
                 delay(500);
             }
-            if (tally_ee == HIGH){
+            if (tally_ee == true){
                 destination = 0xee;
                 receiverMode = 0x05;
                 sendMessage();
@@ -1620,25 +1632,25 @@ void setup() {
         if (authenticated == true) {
             resFlag = 0x01;
 
-            if (tally_bb == HIGH){
+            if (tally_bb == true){
                 destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
                 receiverMode = 0x05;
                 sendMessage();
                 delay(500);
             }
-            if (tally_cc == HIGH){
+            if (tally_cc == true){
                 destination = 0xcc;
                 receiverMode = 0x05;      
                 sendMessage();
                 delay(500);
             }
-            if (tally_dd == HIGH){
+            if (tally_dd == true){
                 destination = 0xdd;
                 receiverMode = 0x05;
                 sendMessage();
                 delay(500);
             }
-            if (tally_ee == HIGH){
+            if (tally_ee == true){
                 destination = 0xee;
                 receiverMode = 0x05;
                 sendMessage();
@@ -1657,25 +1669,25 @@ void setup() {
         if (authenticated == true) {
             resFlag = 0x01;
 
-            if (tally_bb == HIGH){
+            if (tally_bb == true){
                 destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
                 receiverMode = 0x05;
                 sendMessage();
                 delay(500);
             }
-            if (tally_cc == HIGH){
+            if (tally_cc == true){
                 destination = 0xcc;
                 receiverMode = 0x05;      
                 sendMessage();
                 delay(500);
             }
-            if (tally_dd == HIGH){
+            if (tally_dd == true){
                 destination = 0xdd;
                 receiverMode = 0x05;
                 sendMessage();
                 delay(500);
             }
-            if (tally_ee == HIGH){
+            if (tally_ee == true){
                 destination = 0xee;
                 receiverMode = 0x05;
                 sendMessage();
@@ -1747,25 +1759,25 @@ void setup() {
                         eeprom.putInt("txpower", loraTxPower);     
                         eeprom.end(); 
 
-                        if (tally_bb == HIGH){
+                        if (tally_bb == true){
                             destination = 0xbb;                                                                     //if tx power changed via webterminal, then send message to receivers and change the txpower with restart
                             receiverMode = 0x05;
                             sendMessage();
                             delay(500);
                         }
-                        if (tally_cc == HIGH){
+                        if (tally_cc == true){
                             destination = 0xcc;
                             receiverMode = 0x05;
                             sendMessage();
                             delay(500);
                         }
-                        if (tally_dd == HIGH){
+                        if (tally_dd == true){
                             destination = 0xdd;
                             receiverMode = 0x05;
                             sendMessage();
                             delay(500);
                         }
-                        if (tally_ee == HIGH){
+                        if (tally_ee == true){
                             destination = 0xee;
                             receiverMode = 0x05;
                             sendMessage();
@@ -2124,7 +2136,7 @@ void setup() {
     clearValues();
     printDisplay();
 
-    digitalWrite(DISPLAY_CS, HIGH);
+    digitalWrite(DISPLAY_CS, true);
     SPI.end();
     //SPI.endTransaction();
 
@@ -2160,9 +2172,9 @@ void loop() {
     while (mode == "offer") {
         onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
 
-        if ((receiverMode = 0x02) && (tx_adr == "bb") && (tally_bb == LOW)) {
-            tally_bb = HIGH;
-            tally_bb_init = HIGH;
+        if ((receiverMode = 0x02) && (tx_adr == "bb") && (tally_bb == false)) {
+            tally_bb = true;
+            tally_bb_init = true;
             tx_adr_bb = tx_adr;
             rssi_bb = rssi;
 
@@ -2175,9 +2187,9 @@ void loop() {
             lastOfferTimeEnd = millis();
             clearValues();
         }
-        if ((receiverMode = 0x02) && (tx_adr == "cc") && (tally_cc == LOW)) {
-            tally_cc = HIGH;
-            tally_cc_init = HIGH;
+        if ((receiverMode = 0x02) && (tx_adr == "cc") && (tally_cc == false)) {
+            tally_cc = true;
+            tally_cc_init = true;
             tx_adr_cc = tx_adr;
             rssi_cc = rssi;
             bL_cc = bL;
@@ -2186,9 +2198,9 @@ void loop() {
             lastOfferTimeEnd = millis();
             clearValues();
         }
-        if ((receiverMode = 0x02) && (tx_adr == "dd") && (tally_dd == LOW)) {
-            tally_dd = HIGH;
-            tally_dd_init = HIGH;
+        if ((receiverMode = 0x02) && (tx_adr == "dd") && (tally_dd == false)) {
+            tally_dd = true;
+            tally_dd_init = true;
             tx_adr_dd = tx_adr;
             rssi_dd = rssi;
             bL_dd = bL;
@@ -2197,9 +2209,9 @@ void loop() {
             lastOfferTimeEnd = millis();
             clearValues();
         }
-        if ((receiverMode = 0x02) && (tx_adr == "ee") && (tally_ee == LOW)) {
-            tally_ee = HIGH;
-            tally_ee_init = HIGH;
+        if ((receiverMode = 0x02) && (tx_adr == "ee") && (tally_ee == false)) {
+            tally_ee = true;
+            tally_ee_init = true;
             tx_adr_ee = tx_adr;
             rssi_ee = rssi;
             bL_ee = bL;
@@ -2258,7 +2270,7 @@ void loop() {
         Serial.print("gpioC4: "); Serial.println(gpioC4);
         
 
-        if ((gpioV1Cal > 2.8 && tally_bb == HIGH && gpioC1 == HIGH && (millis() - lastSwitchTime > 100))) {
+        if ((gpioV1Cal > 2.8 && tally_bb == true && gpioC1 == true && (millis() - lastSwitchTime > 100))) {
             destination = 0xbb;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2272,7 +2284,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV1Cal < 2.8 && tally_bb == HIGH && gpioC1 == LOW && (millis() - lastSwitchTime > 100))) {
+        if ((gpioV1Cal < 2.8 && tally_bb == true && gpioC1 == false && (millis() - lastSwitchTime > 100))) {
             destination = 0xbb;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2286,7 +2298,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV2Cal > 2.8 && tally_cc == HIGH && gpioC2 == HIGH && (millis() - lastSwitchTime > 100))) {
+        if ((gpioV2Cal > 2.8 && tally_cc == true && gpioC2 == true && (millis() - lastSwitchTime > 100))) {
             destination = 0xcc;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2300,7 +2312,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV2Cal < 2.8 && tally_cc == HIGH && gpioC2 == LOW && (millis() - lastSwitchTime > 100))) {
+        if ((gpioV2Cal < 2.8 && tally_cc == true && gpioC2 == false && (millis() - lastSwitchTime > 100))) {
             destination = 0xcc;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2314,7 +2326,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV3Cal > 2.8 && tally_dd == HIGH && gpioC3 == HIGH && (millis() - lastSwitchTime > 100))) {
+        if ((gpioV3Cal > 2.8 && tally_dd == true && gpioC3 == true && (millis() - lastSwitchTime > 100))) {
             destination = 0xdd;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2328,7 +2340,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV3Cal < 2.8 && tally_dd == HIGH && gpioC3 == LOW && (millis() - lastSwitchTime > 100))) {
+        if ((gpioV3Cal < 2.8 && tally_dd == true && gpioC3 == false && (millis() - lastSwitchTime > 100))) {
             destination = 0xdd;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2342,7 +2354,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV4Cal > 2.8 && tally_ee == HIGH && gpioC4 == HIGH && (millis() - lastSwitchTime > 100))) {
+        if ((gpioV4Cal > 2.8 && tally_ee == true && gpioC4 == true && (millis() - lastSwitchTime > 100))) {
             destination = 0xee;
             receiverMode = 0x03;
             receiverState = 0x01;
@@ -2356,7 +2368,7 @@ void loop() {
             clearValues();
         }
 
-        if ((gpioV4Cal < 2.8 && tally_ee == HIGH && gpioC4 == LOW && (millis() - lastSwitchTime > 100))) {
+        if ((gpioV4Cal < 2.8 && tally_ee == true && gpioC4 == false && (millis() - lastSwitchTime > 100))) {
             destination = 0xee;
             receiverMode = 0x03;
             receiverState = 0x00;
@@ -2418,8 +2430,20 @@ void loop() {
                 }
             }
 
-            if ((millis() - lastSerialPrint > 2000)) {      // print
+            if ((millis() - lastSerialPrint > 10000)) {      // print
                 Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
+                Serial.print("tslR1: "); Serial.println(tslR1);
+                Serial.print("tslR11: "); Serial.println(tslR11);
+                Serial.print("tslR2: "); Serial.println(tslR2);
+                Serial.print("tslR22: "); Serial.println(tslR22);
+                Serial.print("tslR3: "); Serial.println(tslR3);
+                Serial.print("tslR33: "); Serial.println(tslR33);
+                Serial.print("tslR4: "); Serial.println(tslR4);
+                Serial.print("tslR44: "); Serial.println(tslR44);
+                Serial.print("tslG1: "); Serial.println(tslG1);
+                Serial.print("tslG2: "); Serial.println(tslG2);
+                Serial.print("tslG3: "); Serial.println(tslG3);
+                Serial.print("tslG4: "); Serial.println(tslG4);
                 lastSerialPrint = millis();
             }
 
@@ -2542,13 +2566,44 @@ void loop() {
             
 
             
-            //tally bb off
-            if ((tally_bb == true) && ((tally_seq_green[tally_seq_counter_green-2] == 11) || (tally_seq_red[tally_seq_counter_red-3] == 21)) && ((tally_seq_red[tally_seq_counter_red-1] != 21) || (tally_seq_red[tally_seq_counter_red-2] != 21)) && ((tally_seq_red[tally_seq_counter_red-1] != 91) || (tally_seq_red[tally_seq_counter_red-2] != 91)) && (millis() - lastSwitchTime > 100)) {
+            //tally bb green off
+            if ((tally_bb == true) && (tslG1 == false) && (tally_seq_green[tally_seq_counter_green-2] == 11) && (millis() - lastSwitchTime > 100)) {
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x00;
                 receiverColor = 0x00;
                 sendMessage();
+                tslG1 = !tslG1;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally bb 1 red off
+            if ((tally_bb == true) && (tslR1 == false) && (tally_seq_red[tally_seq_counter_red-3] == 21) && (millis() - lastSwitchTime > 100)) {
+                destination = 0xbb;
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                tslR1 = !tslR1;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally bb 11 red off
+            if ((tally_bb == true) && (tslR11 == false) && (tally_seq_red[tally_seq_counter_red-3] == 21) && (millis() - lastSwitchTime > 100)) {
+                destination = 0xbb;
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                tslR11 = !tslR11;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
@@ -2557,12 +2612,13 @@ void loop() {
             }
 
             //tally bb green
-            if (((tally_bb == true) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 49) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_bb == true) && (tslG1 == true) && (tally_seq_green[tally_seq_counter_green-1] == 11) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x02;
                 sendMessage();
+                tslG1 = !tslG1;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
@@ -2571,25 +2627,70 @@ void loop() {
             }
 
             //tally bb red
-            if (((tally_bb == true) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 49) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_bb == true) && (tslR1 == true) && (tally_seq_red[tally_seq_counter_red-1] == 21) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x01;
                 sendMessage();
+                tslR1 = !tslR1;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
             }
-            //////////////////////////////////
-            //tally cc off
-            if ((tally_cc == true) && ((tally_seq_green[tally_seq_counter_green-2] == 12) || (tally_seq_red[tally_seq_counter_red-3] == 22)) && ((tally_seq_red[tally_seq_counter_red-1] != 22) || (tally_seq_red[tally_seq_counter_red-2] != 22)) && ((tally_seq_red[tally_seq_counter_red-1] != 92) || (tally_seq_red[tally_seq_counter_red-2] != 92)) && (millis() - lastSwitchTime > 100)) {
+
+            //tally bb 11 red
+            if (((tally_bb == true) && (tslR11 == true) && (tally_seq_red[tally_seq_counter_red-2] == 21) && (millis() - lastSwitchTime > 100))) {
+                destination = 0xbb;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                tslR11 = !tslR11;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+            
+            //tally cc green off
+            if ((tally_cc == true) && (tslG2 == false) && (tally_seq_green[tally_seq_counter_green-2] == 12) && (millis() - lastSwitchTime > 100)) {
                 receiverMode = 0x03;
                 receiverState = 0x00;
                 receiverColor = 0x00;
                 sendMessage();
+                tslG2 = !tslG2;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally cc red off
+            if ((tally_cc == true) && (tslR2 == false) && (tally_seq_red[tally_seq_counter_red-3] == 22) && (millis() - lastSwitchTime > 100)) {
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                tslR2 = !tslR2;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally cc 22 red off
+            if ((tally_cc == true) && (tslR22 == false) && (tally_seq_red[tally_seq_counter_red-3] == 22) && (millis() - lastSwitchTime > 100)) {
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                tslR22 = !tslR22;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
@@ -2598,12 +2699,13 @@ void loop() {
             }
 
             //tally cc green
-            if (((tally_cc == true) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 50) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_bb == true) && (tslG2 == true) && (tally_seq_green[tally_seq_counter_green-1] == 12) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xcc;
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x02;
                 sendMessage();
+                tslG2 = !tslG2;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
@@ -2612,12 +2714,28 @@ void loop() {
             }
 
             //tally cc red
-            if (((tally_cc == true) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 50) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_bb == true) && (tslR2 == true) && (tally_seq_red[tally_seq_counter_red-1] == 22) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xcc;
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x01;
                 sendMessage();
+                tslR2 = !tslR2;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally cc 22 red
+            if (((tally_bb == true) && (tslR22 == true) && (tally_seq_red[tally_seq_counter_red-2] == 22) && (millis() - lastSwitchTime > 100))) {
+                destination = 0xcc;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                tslR22 = !tslR22;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
@@ -2625,13 +2743,44 @@ void loop() {
                 clearValues();
             }
             
-            //tally dd off
-            if ((tally_dd == true) && ((tally_seq_green[tally_seq_counter_green-2] == 13) || (tally_seq_red[tally_seq_counter_red-3] == 23)) && ((tally_seq_red[tally_seq_counter_red-1] != 23) || (tally_seq_red[tally_seq_counter_red-2] != 23)) && ((tally_seq_red[tally_seq_counter_red-1] != 93) || (tally_seq_red[tally_seq_counter_red-2] != 93)) && (millis() - lastSwitchTime > 100)) {
+            //tally dd green off
+            if ((tally_dd == true) && (tslG3 == false) && (tally_seq_green[tally_seq_counter_green-2] == 13) && (millis() - lastSwitchTime > 100)) {
                 destination = 0xdd;
                 receiverMode = 0x03;
                 receiverState = 0x00;
                 receiverColor = 0x00;
                 sendMessage();
+                tslG3 = !tslG3;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally dd red off
+            if ((tally_dd == true) && (tslR3 == false) && (tally_seq_red[tally_seq_counter_red-3] == 23) && (millis() - lastSwitchTime > 100)) {
+                destination = 0xdd;
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                tslR3 = !tslR3;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally dd 33 red off
+            if ((tally_dd == true) && (tslR33 == false) && (tally_seq_red[tally_seq_counter_red-3] == 23) && (millis() - lastSwitchTime > 100)) {
+                destination = 0xdd;
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                tslR33 = !tslR33;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
@@ -2640,12 +2789,13 @@ void loop() {
             }
 
             //tally dd green
-            if (((tally_dd == true) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 51) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_bb == true) && (tslG3 == true) && (tally_seq_green[tally_seq_counter_green-1] == 13) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xdd;
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x02;
                 sendMessage();
+                tslG3 = !tslG3;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
@@ -2654,12 +2804,13 @@ void loop() {
             }
 
             //tally dd red
-            if (((tally_dd == true) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 51) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_bb == true) && (tslR3 == true) && (tally_seq_red[tally_seq_counter_red-1] == 23) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xdd;
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x01;
                 sendMessage();
+                tslR3 = !tslR3;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
@@ -2667,13 +2818,59 @@ void loop() {
                 clearValues();
             }
 
-            //tally ee off
-            if ((tally_ee == true) && ((tally_seq_green[tally_seq_counter_green-2] == 14) || (tally_seq_red[tally_seq_counter_red-3] == 24)) && ((tally_seq_red[tally_seq_counter_red-1] != 24) || (tally_seq_red[tally_seq_counter_red-2] != 24)) && ((tally_seq_red[tally_seq_counter_red-1] != 94) || (tally_seq_red[tally_seq_counter_red-2] != 94)) && (millis() - lastSwitchTime > 100)) {
+            //tally dd 33 red
+            if (((tally_bb == true) && (tslR33 == true) && (tally_seq_red[tally_seq_counter_red-2] == 23) && (millis() - lastSwitchTime > 100))) {
+                destination = 0xdd;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                tslR33 = !tslR33;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally ee green off
+            if ((tally_ee == true) && (tslG4 == false) && (tally_seq_green[tally_seq_counter_green-2] == 14) && (millis() - lastSwitchTime > 100)) {
                 destination = 0xee;
                 receiverMode = 0x03;
                 receiverState = 0x00;
                 receiverColor = 0x00;
                 sendMessage();
+                tslG4 = !tslG4;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally ee red off
+            if ((tally_ee == true) && (tslR4 == false) && (tally_seq_red[tally_seq_counter_red-3] == 24) && (millis() - lastSwitchTime > 100)) {
+                destination = 0xee;
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                tslR4 = !tslR4;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally ee 44 red off
+            if ((tally_ee == true) && (tslR44 == false) && (tally_seq_red[tally_seq_counter_red-3] == 24) && (millis() - lastSwitchTime > 100)) {
+                destination = 0xee;
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                tslR44 = !tslR44;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
@@ -2682,12 +2879,13 @@ void loop() {
             }
 
             //tally ee green
-            if (((tally_ee == true) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 52) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_bb == true) && (tslG4 == true) && (tally_seq_green[tally_seq_counter_green-1] == 14) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xee;
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x02;
                 sendMessage();
+                tslG4 = !tslG4;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
@@ -2696,12 +2894,28 @@ void loop() {
             }
 
             //tally ee red
-            if (((tally_ee == true) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 52) && (udp_seq[3] == 32) && (millis() - lastSwitchTime > 100))) {
+            if (((tally_bb == true) && (tslR4 == true) && (tally_seq_red[tally_seq_counter_red-1] == 24) && (millis() - lastSwitchTime > 100))) {
                 destination = 0xee;
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x01;
                 sendMessage();
+                tslR4 = !tslR4;
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally ee 44 red
+            if (((tally_bb == true) && (tslR4 == true) && (tally_seq_red[tally_seq_counter_red-2] == 24) && (millis() - lastSwitchTime > 100))) {
+                destination = 0xee;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                tslR44 = !tslR44;
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
@@ -2731,42 +2945,6 @@ void loop() {
             if (useTSL == true) {
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
                     udp_seq[i] = {0};
-                }
-
-                if (tally_seq_green[tally_seq_counter_green-2] == 11) {
-                    tally_seq_green[tally_seq_counter_green-2] = {81};
-                }
-                
-                if (tally_seq_red[tally_seq_counter_red-3] == 21) {
-                    tally_seq_red[tally_seq_counter_red-3] = {91};
-                }
-
-                if (tally_seq_green[tally_seq_counter_green-2] == 12) {
-                    tally_seq_green[tally_seq_counter_green-2] = {82};
-                }
-                
-                if (tally_seq_red[tally_seq_counter_red-3] == 22) {
-                    tally_seq_red[tally_seq_counter_red-3] = {92};
-                }
-
-                if (tally_seq_green[tally_seq_counter_green-2] == 13) {
-                    tally_seq_green[tally_seq_counter_green-2] = {83};
-                }
-                
-                if (tally_seq_red[tally_seq_counter_red-3] == 23) {
-                    tally_seq_red[tally_seq_counter_red-3] = {93};
-                }
-
-                if (tally_seq_green[tally_seq_counter_green-2] == 14) {
-                    tally_seq_green[tally_seq_counter_green-2] = {84};
-                }
-                
-                if (tally_seq_red[tally_seq_counter_red-3] == 24) {
-                    tally_seq_red[tally_seq_counter_red-3] = {94};
-                }
-
-                for(int i = 0; i < 32; i++) {       //clear tally sequence red
-                    Serial.print(tally_seq_red[i]); Serial.print(" ");
                 }
 
                 Serial.println(" ");
@@ -2804,6 +2982,18 @@ void loop() {
         mode = "request";
         mode_s = "req";
         counterSendTsl++;
+        tslR1 = !tslR1;
+        tslR11 = !tslR11;
+        tslR2 = !tslR2;
+        tslR22 = !tslR22;
+        tslR3 = !tslR3;
+        tslR33 = !tslR33;
+        tslR4 = !tslR4;
+        tslR44 = !tslR44;
+        tslG1 = !tslG1;
+        tslG2 = !tslG2;
+        tslG3 = !tslG3;
+        tslG4 = !tslG4;
         break;
     }
 
@@ -2818,42 +3008,6 @@ void loop() {
                 udp_seq[i] = {0};
         }
 
-        if (tally_seq_green[tally_seq_counter_green-2] == 11) {
-            tally_seq_green[tally_seq_counter_green-2] = {81};
-        }
-            
-        if (tally_seq_red[tally_seq_counter_red-3] == 21) {
-            tally_seq_red[tally_seq_counter_red-3] = {91};
-        }
-
-        if (tally_seq_green[tally_seq_counter_green-2] == 12) {
-            tally_seq_green[tally_seq_counter_green-2] = {82};
-        }
-        
-        if (tally_seq_red[tally_seq_counter_red-3] == 22) {
-            tally_seq_red[tally_seq_counter_red-3] = {92};
-        }
-
-        if (tally_seq_green[tally_seq_counter_green-2] == 13) {
-            tally_seq_green[tally_seq_counter_green-2] = {83};
-        }
-        
-        if (tally_seq_red[tally_seq_counter_red-3] == 23) {
-            tally_seq_red[tally_seq_counter_red-3] = {93};
-        }
-
-        if (tally_seq_green[tally_seq_counter_green-2] == 14) {
-            tally_seq_green[tally_seq_counter_green-2] = {84};
-        }
-        
-        if (tally_seq_red[tally_seq_counter_red-3] == 24) {
-            tally_seq_red[tally_seq_counter_red-3] = {94};
-        }
-
-        for(int i = 0; i < 32; i++) {       //clear tally sequence red
-            Serial.print(tally_seq_red[i]); Serial.print(" ");
-        }
-
         Serial.println(" ");
 
         break;
@@ -2862,7 +3016,7 @@ void loop() {
     }
 
     // Control Mode BB after discover and 3 - 3.5 minutes or if BB offline, control after 9 minutes
-    if (((millis() - lastDiscoverTimebb > 180000) && ((tally_bb == HIGH) || (tally_bb_init == HIGH))) || ((millis() - lastDiscoverTimebb > 540000) && ((tally_bb == LOW) || (tally_bb_init == LOW)))) {
+    if (((millis() - lastDiscoverTimebb > 180000) && ((tally_bb == true) || (tally_bb_init == true))) || ((millis() - lastDiscoverTimebb > 540000) && ((tally_bb == false) || (tally_bb_init == false)))) {
         destination = 0xbb;
         receiverMode = 0x05;
         receiverState = 0x00;
@@ -2878,11 +3032,11 @@ void loop() {
             onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
 
             if ((receiverMode = 0x05) && (tx_adr == "bb")) {
-                if (tally_bb_init == LOW || tally_bb == LOW) {
+                if (tally_bb_init == false || tally_bb == false) {
                 counterTallys++;
                 }
-                tally_bb = HIGH;
-                tally_bb_init = HIGH;
+                tally_bb = true;
+                tally_bb_init = true;
                 tx_adr_bb = tx_adr;
                 rssi_bb = rssi;
 
@@ -2900,8 +3054,8 @@ void loop() {
             if (millis() - lastControlTime > 3000) {
                 missed_bb++;
             
-                if (missed_bb >= 2 && tally_bb == HIGH) {
-                    tally_bb = LOW;
+                if (missed_bb >= 2 && tally_bb == true) {
+                    tally_bb = false;
                     counterTallys--;
                 }
                 mode = "request"; 
@@ -2913,7 +3067,7 @@ void loop() {
     }
   
     // Control Mode CC after discover and 3 - 3.5 minutes or if BB offline, control after 9.5 minutes
-    if (((millis() - lastDiscoverTimecc > 190000) && ((tally_cc == HIGH) || (tally_cc_init == HIGH))) || ((millis() - lastDiscoverTimecc > 570000) && ((tally_cc == LOW) || (tally_cc_init == LOW)))) {
+    if (((millis() - lastDiscoverTimecc > 190000) && ((tally_cc == true) || (tally_cc_init == true))) || ((millis() - lastDiscoverTimecc > 570000) && ((tally_cc == false) || (tally_cc_init == false)))) {
         destination = 0xcc;
         receiverMode = 0x05;
         receiverState = 0x00;
@@ -2929,11 +3083,11 @@ void loop() {
             onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
       
             if ((receiverMode = 0x05) && (tx_adr == "cc")) {
-                if (tally_cc_init == LOW || tally_cc == LOW) {
+                if (tally_cc_init == false || tally_cc == false) {
                 counterTallys++;
                 }
-                tally_cc = HIGH;
-                tally_cc_init = HIGH;
+                tally_cc = true;
+                tally_cc_init = true;
                 tx_adr_cc = tx_adr;
                 rssi_cc = rssi;
                 bL_cc = bL;
@@ -2947,8 +3101,8 @@ void loop() {
             if (millis() - lastControlTime > 3000) {
                 missed_cc++;
                 
-                if (missed_cc >= 2 && tally_cc == HIGH) {
-                tally_cc = LOW;
+                if (missed_cc >= 2 && tally_cc == true) {
+                tally_cc = false;
                 counterTallys--;
                 }
                 mode = "request"; 
@@ -2960,7 +3114,7 @@ void loop() {
     }
 
     // Control Mode DD after discover and 3 - 3.5 minutes or if BB offline, control after 10 minutes
-    if (((millis() - lastDiscoverTimedd > 200000) && ((tally_dd == HIGH) || (tally_dd_init == HIGH))) || ((millis() - lastDiscoverTimedd > 600000) && ((tally_dd == LOW) || (tally_dd_init == LOW)))) {
+    if (((millis() - lastDiscoverTimedd > 200000) && ((tally_dd == true) || (tally_dd_init == true))) || ((millis() - lastDiscoverTimedd > 600000) && ((tally_dd == false) || (tally_dd_init == false)))) {
         destination = 0xdd;
         receiverMode = 0x05;
         receiverState = 0x00;
@@ -2976,11 +3130,11 @@ void loop() {
             onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
             
             if ((receiverMode = 0x05) && (tx_adr == "dd")) {
-                if (tally_dd_init == LOW || tally_dd == LOW) {
+                if (tally_dd_init == false || tally_dd == false) {
                 counterTallys++;
                 }
-                tally_dd = HIGH;
-                tally_dd_init = HIGH;
+                tally_dd = true;
+                tally_dd_init = true;
                 tx_adr_dd = tx_adr;
                 rssi_dd = rssi;
                 bL_dd = bL;
@@ -2994,8 +3148,8 @@ void loop() {
             if (millis() - lastControlTime > 3000) {
                 missed_dd++;
                 
-                if (missed_dd >= 2 && tally_dd == HIGH) {
-                tally_dd = LOW;
+                if (missed_dd >= 2 && tally_dd == true) {
+                tally_dd = false;
                 counterTallys--;
                 }
                 mode = "request"; 
@@ -3007,7 +3161,7 @@ void loop() {
     }
 
     // Control Mode EE after discover and 3 - 3.5 minutes or if BB offline, control after 10.5 minutes
-    if (((millis() - lastDiscoverTimeee > 210000) && ((tally_ee == HIGH) || (tally_ee_init == HIGH))) || ((millis() - lastDiscoverTimeee > 630000) && ((tally_ee == LOW) || (tally_ee_init == LOW)))) {
+    if (((millis() - lastDiscoverTimeee > 210000) && ((tally_ee == true) || (tally_ee_init == true))) || ((millis() - lastDiscoverTimeee > 630000) && ((tally_ee == false) || (tally_ee_init == false)))) {
         destination = 0xee;
         receiverMode = 0x05;
         receiverState = 0x00;
@@ -3023,11 +3177,11 @@ void loop() {
             onReceive(LoRa.parsePacket(), &rx_adr, &tx_adr, &rssi, &bL, &receiverMode, &receiverState, &receiverColor);    // Parse Packets and Read it
             
             if ((receiverMode = 0x05) && (tx_adr == "ee")) {
-                if (tally_ee_init == LOW || tally_ee == LOW) {
+                if (tally_ee_init == false || tally_ee == false) {
                 counterTallys++;
                 }
-                tally_ee = HIGH;
-                tally_ee_init = HIGH;
+                tally_ee = true;
+                tally_ee_init = true;
                 tx_adr_ee = tx_adr;
                 rssi_ee = rssi;
                 bL_ee = bL;
@@ -3041,8 +3195,8 @@ void loop() {
             if (millis() - lastControlTime > 3000) {
                 missed_ee++;
                 
-                if (missed_ee >= 2 && tally_ee == HIGH) {
-                tally_ee = LOW;
+                if (missed_ee >= 2 && tally_ee == true) {
+                tally_ee = false;
                 counterTallys--;
                 }
                 mode = "request"; 
