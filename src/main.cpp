@@ -118,8 +118,8 @@ char buf_html_dns2[32];
 int udp_seqseq[32] = {};
 int udp_seq[32] = {};
 int udp_s[32] = {};
-int tally_seq_red[32] = {};
-int tally_seq_green[32] = {};
+int tally_seq[32] = {};
+
 
 const char* param_ip = "input1";
 const char* param_gw = "input2";
@@ -193,8 +193,7 @@ int int_snOctet1, int_snOctet2, int_snOctet3, int_snOctet4;
 int int_dns1Octet1, int_dns1Octet2, int_dns1Octet3, int_dns1Octet4;
 int int_dns2Octet1, int_dns2Octet2, int_dns2Octet3, int_dns2Octet4;
 int buf_rssi_bb_int = 0;
-int tally_seq_counter_green = 0;
-int tally_seq_counter_red = 0;
+int tally_seq_counter = 0;
 
 ///////////////////////////////////////////////
 //////////// Setup LORA Values ////////////////
@@ -255,8 +254,7 @@ bool tslG1 = true;
 bool tslG2 = true;
 bool tslG3 = true;
 bool tslG4 = true;
-bool tally_seq_red_int = false;
-bool tally_seq_green_int = false;
+bool tally_seq_int = false;
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -2140,6 +2138,11 @@ void setup() {
 
     startSPI_LORA();
 
+
+    for(int i = 0; i < 32; i++) {       //clear Tally Sequence
+        tally_seq[i] = {0};
+    }
+
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -2428,14 +2431,17 @@ void loop() {
                 }
             }
 
-            if ((millis() - lastSerialPrint > 10000)) {      // print
+            if ((millis() - lastSerialPrint > 2000)) {      // print
                 Serial.println("================================");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
+                for(int i = 0; i < 32; i++) {       //clear UDP Sequence
+                    Serial.print(tally_seq[i]); Serial.print(" ");
+                }
+                Serial.println(" ");
+                Serial.print("TSC-1: "); Serial.print(tally_seq[tally_seq_counter-1]); Serial.print(" TSC-2: "); Serial.print(tally_seq[tally_seq_counter-2]); Serial.print(" TSC-3: "); Serial.println(tally_seq[tally_seq_counter-3]);
                 Serial.print("tslR1: "); Serial.println(tslR1);
                 Serial.print("tslR2: "); Serial.println(tslR2);
                 Serial.print("tslR3: "); Serial.println(tslR3);
                 Serial.print("tslR4: "); Serial.println(tslR4);
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
                 Serial.print("tslG1: "); Serial.println(tslG1);
                 Serial.print("tslG2: "); Serial.println(tslG2);
                 Serial.print("tslG3: "); Serial.println(tslG3);
@@ -2448,65 +2454,65 @@ void loop() {
 
             //green
             if (((tally_bb == true) && (udp_seqseq[0] == 166) && (udp_seqseq[1] == 49) && (udp_seqseq[2] == 49) && (udp_seqseq[3] == 32))){
-                if (((tally_seq_green[tally_seq_counter_green-1]) != 11) || (tally_seq_green_int == false)) {
-                    tally_seq_green[tally_seq_counter_green] = {11};
-                    tally_seq_counter_green++;
-                    tally_seq_green_int = true;
+                if (((((tally_seq[tally_seq_counter-1]) != 11) && (tally_seq[tally_seq_counter-3]) != 11)) || (tally_seq_int == false)) {
+                    tally_seq[tally_seq_counter] = {11};
+                    tally_seq_counter++;
+                    tally_seq_int = true;
                 }
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq_green[i]); Serial.print(" ");
+                    Serial.print(tally_seq[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
                 }
-                if (tally_seq_counter_green >= 32) {
-                    tally_seq_counter_green = 0;
+                if (tally_seq_counter >= 32) {
+                    tally_seq_counter = 0;
                 }
                 Serial.println(" ");
             }
 
             if (((tally_cc == true) && (udp_seqseq[0] == 166) && (udp_seqseq[1] == 49) && (udp_seqseq[2] == 50) && (udp_seqseq[3] == 32))){
-                if (((tally_seq_green[tally_seq_counter_green-1]) != 12) || (tally_seq_green_int == false)) {
-                    tally_seq_green[tally_seq_counter_green] = {12};
-                    tally_seq_counter_green++;
-                    tally_seq_green_int = true;
+                if (((((tally_seq[tally_seq_counter-1]) != 12) && (tally_seq[tally_seq_counter-3]) != 12)) || (tally_seq_int == false)) {
+                    tally_seq[tally_seq_counter] = {12};
+                    tally_seq_counter++;
+                    tally_seq_int = true;
                 }
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq_green[i]); Serial.print(" ");
+                    Serial.print(tally_seq[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
                 }
-                if (tally_seq_counter_green >= 32) {
-                    tally_seq_counter_green = 0;
+                if (tally_seq_counter >= 32) {
+                    tally_seq_counter = 0;
                 }
                 Serial.println(" ");
             }
 
             if (((tally_dd == true) && (udp_seqseq[0] == 166) && (udp_seqseq[1] == 49) && (udp_seqseq[2] == 51) && (udp_seqseq[3] == 32))){
-                if (((tally_seq_green[tally_seq_counter_green-1]) != 13) || (tally_seq_green_int == false)) {
-                    tally_seq_green[tally_seq_counter_green] = {13};
-                    tally_seq_counter_green++;
-                    tally_seq_green_int = true;
+                if (((((tally_seq[tally_seq_counter-1]) != 13) && (tally_seq[tally_seq_counter-3]) != 13)) || (tally_seq_int == false)) {
+                    tally_seq[tally_seq_counter] = {13};
+                    tally_seq_counter++;
+                    tally_seq_int = true;
                 }
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq_green[i]); Serial.print(" ");
+                    Serial.print(tally_seq[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
                 }
-                if (tally_seq_counter_green >= 32) {
-                    tally_seq_counter_green = 0;
+                if (tally_seq_counter >= 32) {
+                    tally_seq_counter = 0;
                 }
                 Serial.println(" ");
             }
 
             if (((tally_ee == true) && (udp_seqseq[0] == 166) && (udp_seqseq[1] == 49) && (udp_seqseq[2] == 52) && (udp_seqseq[3] == 32))){
-                if (((tally_seq_green[tally_seq_counter_green-1]) != 14) || (tally_seq_green_int == false)) {
-                    tally_seq_green[tally_seq_counter_green] = {14};
-                    tally_seq_counter_green++;
-                    tally_seq_green_int = true;
+                if (((((tally_seq[tally_seq_counter-1]) != 14) && (tally_seq[tally_seq_counter-3]) != 14)) || (tally_seq_int == false)) {
+                    tally_seq[tally_seq_counter] = {14};
+                    tally_seq_counter++;
+                    tally_seq_int = true;
                 }
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq_green[i]); Serial.print(" ");
+                    Serial.print(tally_seq[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
                 }
-                if (tally_seq_counter_green >= 32) {
-                    tally_seq_counter_green = 0;
+                if (tally_seq_counter >= 32) {
+                    tally_seq_counter = 0;
                 }
                 Serial.println(" ");
             }
@@ -2514,66 +2520,66 @@ void loop() {
 
 
             //red
-            if (((tally_bb == true) && (udp_seqseq[0] == 165) && (udp_seqseq[1] == 50) && (udp_seqseq[2] == 49) && (udp_seqseq[3] == 32))){
-                if (((tally_seq_red[tally_seq_counter_red-1]) != 21) || (tally_seq_red_int == false)) {
-                    tally_seq_red[tally_seq_counter_red] = {21};
-                    tally_seq_counter_red++;
-                    tally_seq_red_int = true;
+            if (((tally_bb == true) && (udp_seqseq[0] == 165 || 166) && (udp_seqseq[1] == 50 || 51) && (udp_seqseq[2] == 49) && (udp_seqseq[3] == 32))){
+                if (((((tally_seq[tally_seq_counter-1]) != 21) && (tally_seq[tally_seq_counter-3]) != 21)) || (tally_seq_int == false)) {
+                    tally_seq[tally_seq_counter] = {21};
+                    tally_seq_counter++;
+                    tally_seq_int = true;
                 }
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq_red[i]); Serial.print(" ");
+                    Serial.print(tally_seq[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
                 }
-                if (tally_seq_counter_red >= 32) {
-                    tally_seq_counter_red = 0;
+                if (tally_seq_counter >= 32) {
+                    tally_seq_counter = 0;
                 }
                 Serial.println(" ");
             }
 
-            if (((tally_cc == true) && (udp_seqseq[0] == 165) && (udp_seqseq[1] == 50) && (udp_seqseq[2] == 50) && (udp_seqseq[3] == 32))){
-                if (((tally_seq_red[tally_seq_counter_red-1]) != 22) || (tally_seq_red_int == false)) {
-                    tally_seq_red[tally_seq_counter_red] = {22};
-                    tally_seq_counter_red++;
-                    tally_seq_red_int = true;
+            if (((tally_cc == true) && (udp_seqseq[0] == 165 || 166) && (udp_seqseq[1] == 50 || 51) && (udp_seqseq[2] == 50) && (udp_seqseq[3] == 32))){
+                if (((((tally_seq[tally_seq_counter-1]) != 22) && (tally_seq[tally_seq_counter-3]) != 22)) || (tally_seq_int == false)) {
+                    tally_seq[tally_seq_counter] = {22};
+                    tally_seq_counter++;
+                    tally_seq_int = true;
                 }
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq_red[i]); Serial.print(" ");
+                    Serial.print(tally_seq[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
                 }
-                if (tally_seq_counter_red >= 32) {
-                    tally_seq_counter_red = 0;
+                if (tally_seq_counter >= 32) {
+                    tally_seq_counter = 0;
                 }
                 Serial.println(" ");
             }
 
-            if (((tally_dd == true) && (udp_seqseq[0] == 165) && (udp_seqseq[1] == 50) && (udp_seqseq[2] == 51) && (udp_seqseq[3] == 32))){
-                if (((tally_seq_red[tally_seq_counter_red-1]) != 23) || (tally_seq_red_int == false)) {
-                    tally_seq_red[tally_seq_counter_red] = {23};
-                    tally_seq_counter_red++;
-                    tally_seq_red_int = true;
+            if (((tally_dd == true) && (udp_seqseq[0] == 165 || 166) && (udp_seqseq[1] == 50 || 51) && (udp_seqseq[2] == 51) && (udp_seqseq[3] == 32))){
+                if (((((tally_seq[tally_seq_counter-1]) != 23) && (tally_seq[tally_seq_counter-3]) != 23)) || (tally_seq_int == false)) {
+                    tally_seq[tally_seq_counter] = {23};
+                    tally_seq_counter++;
+                    tally_seq_int = true;
                 }
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq_red[i]); Serial.print(" ");
+                    Serial.print(tally_seq[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
                 }
-                if (tally_seq_counter_red >= 32) {
-                    tally_seq_counter_red = 0;
+                if (tally_seq_counter >= 32) {
+                    tally_seq_counter = 0;
                 }
                 Serial.println(" ");
             }
 
-            if (((tally_ee == true) && (udp_seqseq[0] == 165) && (udp_seqseq[1] == 50) && (udp_seqseq[2] == 52) && (udp_seqseq[3] == 32))){
-                if (((tally_seq_red[tally_seq_counter_red-1]) != 24) || (tally_seq_red_int == false)) {
-                    tally_seq_red[tally_seq_counter_red] = {24};
-                    tally_seq_counter_red++;
-                    tally_seq_red_int = true;
+            if (((tally_ee == true) && (udp_seqseq[0] == 165 || 166) && (udp_seqseq[1] == 50 || 51) && (udp_seqseq[2] == 52) && (udp_seqseq[3] == 32))){
+                if (((((tally_seq[tally_seq_counter-1]) != 24) && (tally_seq[tally_seq_counter-3]) != 24)) || (tally_seq_int == false)) {
+                    tally_seq[tally_seq_counter] = {24};
+                    tally_seq_counter++;
+                    tally_seq_int = true;
                 }
                 for(int i = 0; i < 32; i++) {       //clear UDP Sequence
-                    Serial.print(tally_seq_red[i]); Serial.print(" ");
+                    Serial.print(tally_seq[i]); Serial.print(" ");
                     udp_seqseq[i] = {0};
                 }
-                if (tally_seq_counter_red >= 32) {
-                    tally_seq_counter_red = 0;
+                if (tally_seq_counter >= 32) {
+                    tally_seq_counter = 0;
                 }
                 Serial.println(" ");
             }
@@ -2584,11 +2590,8 @@ void loop() {
 
             
             //tally bb green off
-            if ((tally_bb == true) && (tslG1 == false) && (tally_seq_green[tally_seq_counter_green-2] == 11) && (millis() - lastSwitchTime > 100)) {
-                Serial.println("================================");
-                Serial.println("=BEFORE bb green off=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG1: "); Serial.println(tslG1);
+            if ((tally_bb == true) && (tslG1 == false) && (tally_seq[tally_seq_counter-3] == 11) && (millis() - lastSwitchTime > 100)) {
+                Serial.println("=bb green off=");
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2600,18 +2603,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER bb green off=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG1: "); Serial.println(tslG1);
-                Serial.println("================================");
             }
 
             //tally bb red off
-            if ((tally_bb == true) && (tslR1 == false) && (tally_seq_red[tally_seq_counter_red-3] == 21) && (millis() - lastSwitchTime > 100)) {
-                Serial.println("================================");
-                Serial.println("=BEFORE bb red off=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR1: "); Serial.println(tslR1);
+            if ((tally_bb == true) && (tslR1 == false) && (tally_seq[tally_seq_counter-3] == 21) && (millis() - lastSwitchTime > 100)) {
+                Serial.println("=bb red off=");
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2623,18 +2619,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR1: "); Serial.println(tslR1);
-                Serial.println("================================");
             }
 
             //tally bb green
-            if (((tally_bb == true) && (tslG1 == true) && (tally_seq_green[tally_seq_counter_green-1] == 11) && (millis() - lastSwitchTime > 100))) {
-                Serial.println("================================");
-                Serial.println("=BEFORE bb green=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG1: "); Serial.println(tslG1);
+            if (((tally_bb == true) && (tslG1 == true) && (tally_seq[tally_seq_counter-1] == 11) && (millis() - lastSwitchTime > 100))) {
+                Serial.println("=bb green=");
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2646,18 +2635,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER bb green=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG1: "); Serial.println(tslG1);
-                Serial.println("================================");
             }
 
             //tally bb red
-            if (((tally_bb == true) && (tslR1 == true) && (tally_seq_red[tally_seq_counter_red-1] == 21) && (millis() - lastSwitchTime > 100))) {
-                Serial.println("================================");
-                Serial.println("=BEFORE bb red=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR1: "); Serial.println(tslR1);
+            if (((tally_bb == true) && (tslR1 == true) && (tally_seq[tally_seq_counter-1] == 21) && (millis() - lastSwitchTime > 100))) {
+                Serial.println("=bb red=");
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2669,18 +2651,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR1: "); Serial.println(tslR1);
-                Serial.println("================================");
             }
             
             //tally cc green off
-            if ((tally_cc == true) && (tslG2 == false) && (tally_seq_green[tally_seq_counter_green-2] == 12) && (millis() - lastSwitchTime > 100)) {
-                Serial.println("================================");
-                Serial.println("=BEFORE cc green off=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG2: "); Serial.println(tslG2);
+            if ((tally_cc == true) && (tslG2 == false) && (tally_seq[tally_seq_counter-3] == 12) && (millis() - lastSwitchTime > 100)) {
+                Serial.println("=cc green off=");
                 destination = 0xcc;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2692,18 +2667,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER cc green off=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG2: "); Serial.println(tslG2);
-                Serial.println("================================");
             }
 
             //tally cc red off
-            if ((tally_cc == true) && (tslR2 == false) && (tally_seq_red[tally_seq_counter_red-3] == 22) && (millis() - lastSwitchTime > 100)) {
-                Serial.println("================================");
-                Serial.println("=BEFORE cc red off=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR2: "); Serial.println(tslR2);
+            if ((tally_cc == true) && (tslR2 == false) && (tally_seq[tally_seq_counter-3] == 22) && (millis() - lastSwitchTime > 100)) {
+                Serial.println("=cc red off=");
                 destination = 0xcc;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2715,18 +2683,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR2: "); Serial.println(tslR2);
-                Serial.println("================================");
             }
 
             //tally cc green
-            if (((tally_bb == true) && (tslG2 == true) && (tally_seq_green[tally_seq_counter_green-1] == 12) && (millis() - lastSwitchTime > 100))) {
-                Serial.println("================================");
-                Serial.println("=BEFORE cc green=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG2: "); Serial.println(tslG2);
+            if (((tally_bb == true) && (tslG2 == true) && (tally_seq[tally_seq_counter-1] == 12) && (millis() - lastSwitchTime > 100))) {
+                Serial.println("=cc green=");
                 destination = 0xcc;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2738,18 +2699,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER cc green=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG2: "); Serial.println(tslG2);
-                Serial.println("================================");
             }
 
             //tally cc red
-            if (((tally_bb == true) && (tslR2 == true) && (tally_seq_red[tally_seq_counter_red-1] == 22) && (millis() - lastSwitchTime > 100))) {
-                Serial.println("================================");
-                Serial.println("=BEFORE cc red=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR2: "); Serial.println(tslR2);
+            if (((tally_bb == true) && (tslR2 == true) && (tally_seq[tally_seq_counter-1] == 22) && (millis() - lastSwitchTime > 100))) {
+                Serial.println("=cc red=");
                 destination = 0xcc;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2761,18 +2715,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR2: "); Serial.println(tslR2);
-                Serial.println("================================");
             }
             
             //tally dd green off
-            if ((tally_dd == true) && (tslG3 == false) && (tally_seq_green[tally_seq_counter_green-2] == 13) && (millis() - lastSwitchTime > 100)) {
-                Serial.println("================================");
-                Serial.println("=BEFORE dd green off=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG3: "); Serial.println(tslG3);
+            if ((tally_dd == true) && (tslG3 == false) && (tally_seq[tally_seq_counter-3] == 13) && (millis() - lastSwitchTime > 100)) {
+                Serial.println("=dd green off=");
                 destination = 0xdd;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2784,18 +2731,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER dd green off=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG3: "); Serial.println(tslG3);
-                Serial.println("================================");
             }
 
             //tally dd red off
-            if ((tally_dd == true) && (tslR3 == false) && (tally_seq_red[tally_seq_counter_red-3] == 23) && (millis() - lastSwitchTime > 100)) {
-                Serial.println("================================");
-                Serial.println("=BEFORE dd red off=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR3: "); Serial.println(tslR3);
+            if ((tally_dd == true) && (tslR3 == false) && (tally_seq[tally_seq_counter-3] == 23) && (millis() - lastSwitchTime > 100)) {
+                Serial.println("=dd red off=");
                 destination = 0xdd;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2807,18 +2747,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR3: "); Serial.println(tslR3);
-                Serial.println("================================");
             }
 
             //tally dd green
-            if (((tally_bb == true) && (tslG3 == true) && (tally_seq_green[tally_seq_counter_green-1] == 13) && (millis() - lastSwitchTime > 100))) {
-                Serial.println("================================");
-                Serial.println("=BEFORE dd green=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG3: "); Serial.println(tslG3);
+            if (((tally_bb == true) && (tslG3 == true) && (tally_seq[tally_seq_counter-1] == 13) && (millis() - lastSwitchTime > 100))) {
+                Serial.println("=dd green=");
                 destination = 0xdd;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2830,18 +2763,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER dd green=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG3: "); Serial.println(tslG3);
-                Serial.println("================================");
             }
 
             //tally dd red
-            if (((tally_bb == true) && (tslR3 == true) && (tally_seq_red[tally_seq_counter_red-1] == 23) && (millis() - lastSwitchTime > 100))) {
-                Serial.println("================================");
-                Serial.println("=BEFORE dd red=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR3: "); Serial.println(tslR3);
+            if (((tally_bb == true) && (tslR3 == true) && (tally_seq[tally_seq_counter-1] == 23) && (millis() - lastSwitchTime > 100))) {
+                Serial.println("=dd red=");
                 destination = 0xdd;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2853,18 +2779,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR3: "); Serial.println(tslR3);
-                Serial.println("================================");
             }
 
             //tally ee green off
-            if ((tally_ee == true) && (tslG4 == false) && (tally_seq_green[tally_seq_counter_green-2] == 14) && (millis() - lastSwitchTime > 100)) {
-                Serial.println("================================");
-                Serial.println("=BEFORE ee green off=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG4: "); Serial.println(tslG4);
+            if ((tally_ee == true) && (tslG4 == false) && (tally_seq[tally_seq_counter-3] == 14) && (millis() - lastSwitchTime > 100)) {
+                Serial.println("=ee green off=");
                 destination = 0xee;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2876,18 +2795,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER ee green off=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG4: "); Serial.println(tslG4);
-                Serial.println("================================");
             }
 
             //tally ee red off
-            if ((tally_ee == true) && (tslR4 == false) && (tally_seq_red[tally_seq_counter_red-3] == 24) && (millis() - lastSwitchTime > 100)) {
-                Serial.println("================================");
-                Serial.println("=BEFORE ee red off=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR4: "); Serial.println(tslR4);
+            if ((tally_ee == true) && (tslR4 == false) && (tally_seq[tally_seq_counter-3] == 24) && (millis() - lastSwitchTime > 100)) {
+                Serial.println("=ee red off=");
                 destination = 0xee;
                 receiverMode = 0x03;
                 receiverState = 0x00;
@@ -2899,18 +2811,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER ee red off=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR4: "); Serial.println(tslR4);
-                Serial.println("================================");
             }
 
             //tally ee green
-            if (((tally_bb == true) && (tslG4 == true) && (tally_seq_green[tally_seq_counter_green-1] == 14) && (millis() - lastSwitchTime > 100))) {
-                Serial.println("================================");
-                Serial.println("=BEFORE ee green=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG4: "); Serial.println(tslG4);
+            if (((tally_bb == true) && (tslG4 == true) && (tally_seq[tally_seq_counter-1] == 14) && (millis() - lastSwitchTime > 100))) {
+                Serial.println("=ee green=");
                 destination = 0xee;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2922,18 +2827,11 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER ee green=");
-                Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
-                Serial.print("tslG4: "); Serial.println(tslG4);
-                Serial.println("================================");
             }
 
             //tally ee red
-            if (((tally_bb == true) && (tslR4 == true) && (tally_seq_red[tally_seq_counter_red-1] == 24) && (millis() - lastSwitchTime > 100))) {
-                Serial.println("================================");
-                Serial.println("=BEFORE ee red=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR4: "); Serial.println(tslR4);
+            if (((tally_bb == true) && (tslR4 == true) && (tally_seq[tally_seq_counter-1] == 24) && (millis() - lastSwitchTime > 100))) {
+                Serial.println("=ee red=");
                 destination = 0xee;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2945,10 +2843,6 @@ void loop() {
                 lastAckTime = millis();
                 lastSwitchTime = millis();
                 clearValues();
-                Serial.println("=AFTER ee red=");
-                Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
-                Serial.print("tslR4: "); Serial.println(tslR4);
-                Serial.println("================================");
             }
 
         }
@@ -3009,12 +2903,12 @@ void loop() {
         Serial.println("================================");
         Serial.println("=ACK STAGE=");
         Serial.println("=BEFORE=");
-        Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
+        Serial.print("TSC-1: "); Serial.print(tally_seq[tally_seq_counter-1]); Serial.print(" TSC-2: "); Serial.print(tally_seq[tally_seq_counter-2]); Serial.print(" TSC-3: "); Serial.println(tally_seq[tally_seq_counter-3]);
         Serial.print("tslR1: "); Serial.println(tslR1);
         Serial.print("tslR2: "); Serial.println(tslR2);
         Serial.print("tslR3: "); Serial.println(tslR3);
         Serial.print("tslR4: "); Serial.println(tslR4);
-        Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
+        Serial.print("TSC-1: "); Serial.print(tally_seq[tally_seq_counter-1]); Serial.print(" TSC-2: "); Serial.print(tally_seq[tally_seq_counter-2]); Serial.print(" TSC-3: "); Serial.println(tally_seq[tally_seq_counter-3]);
         Serial.print("tslG1: "); Serial.println(tslG1);
         Serial.print("tslG2: "); Serial.println(tslG2);
         Serial.print("tslG3: "); Serial.println(tslG3);
@@ -3024,22 +2918,31 @@ void loop() {
         mode_s = "req";
         counterSendTsl++;
 
-        if (tslR1 == false) {tslR1 = !tslR1;}
-        if (tslR2 == false) {tslR2 = !tslR2;}
-        if (tslR3 == false) {tslR3 = !tslR3;}
-        if (tslR4 == false) {tslR4 = !tslR4;}
-        if (tslG1 == false) {tslG1 = !tslG1;}
-        if (tslG2 == false) {tslG2 = !tslG2;}
-        if (tslG3 == false) {tslG3 = !tslG3;}
-        if (tslG4 == false) {tslG4 = !tslG4;}
+        if ((tslR1 == false) && (tally_seq[tally_seq_counter-1] == 21)) {tslR1 = !tslR1;}
+        if ((tslR2 == false) && (tally_seq[tally_seq_counter-1] == 22)) {tslR2 = !tslR2;}
+        if ((tslR3 == false) && (tally_seq[tally_seq_counter-1] == 23)) {tslR3 = !tslR3;}
+        if ((tslR4 == false) && (tally_seq[tally_seq_counter-1] == 24)) {tslR4 = !tslR4;}
+        if ((tslG1 == false) && (tally_seq[tally_seq_counter-1] == 11)) {tslG1 = !tslG1;}
+        if ((tslG2 == false) && (tally_seq[tally_seq_counter-1] == 12)) {tslG2 = !tslG2;}
+        if ((tslG3 == false) && (tally_seq[tally_seq_counter-1] == 13)) {tslG3 = !tslG3;}
+        if ((tslG4 == false) && (tally_seq[tally_seq_counter-1] == 14)) {tslG4 = !tslG4;}
+        
+        if ((tslR1 == true) && (tally_seq[tally_seq_counter-3] == 21)) {tslR1 = !tslR1;}
+        if ((tslR2 == true) && (tally_seq[tally_seq_counter-3] == 22)) {tslR2 = !tslR2;}
+        if ((tslR3 == true) && (tally_seq[tally_seq_counter-3] == 23)) {tslR3 = !tslR3;}
+        if ((tslR4 == true) && (tally_seq[tally_seq_counter-3] == 24)) {tslR4 = !tslR4;}
+        if ((tslG1 == true) && (tally_seq[tally_seq_counter-3] == 11)) {tslG1 = !tslG1;}
+        if ((tslG2 == true) && (tally_seq[tally_seq_counter-3] == 12)) {tslG2 = !tslG2;}
+        if ((tslG3 == true) && (tally_seq[tally_seq_counter-3] == 13)) {tslG3 = !tslG3;}
+        if ((tslG4 == true) && (tally_seq[tally_seq_counter-3] == 14)) {tslG4 = !tslG4;}
 
         Serial.println("=AFTER=");
-        Serial.print("TSCR-1: "); Serial.print(tally_seq_red[tally_seq_counter_red-1]); Serial.print(" TSCR-2: "); Serial.print(tally_seq_red[tally_seq_counter_red-2]); Serial.print(" TSCR-3: "); Serial.println(tally_seq_red[tally_seq_counter_red-3]);
+        Serial.print("TSC-1: "); Serial.print(tally_seq[tally_seq_counter-1]); Serial.print(" TSC-2: "); Serial.print(tally_seq[tally_seq_counter-2]); Serial.print(" TSC-3: "); Serial.println(tally_seq[tally_seq_counter-3]);
         Serial.print("tslR1: "); Serial.println(tslR1);
         Serial.print("tslR2: "); Serial.println(tslR2);
         Serial.print("tslR3: "); Serial.println(tslR3);
         Serial.print("tslR4: "); Serial.println(tslR4);
-        Serial.print("TSCG-1: "); Serial.print(tally_seq_green[tally_seq_counter_green-1]); Serial.print(" TSCG-2: "); Serial.print(tally_seq_green[tally_seq_counter_green-2]); Serial.print(" TSCG-3: "); Serial.println(tally_seq_green[tally_seq_counter_green-3]);
+        Serial.print("TSC-1: "); Serial.print(tally_seq[tally_seq_counter-1]); Serial.print(" TSC-2: "); Serial.print(tally_seq[tally_seq_counter-2]); Serial.print(" TSC-3: "); Serial.println(tally_seq[tally_seq_counter-3]);
         Serial.print("tslG1: "); Serial.println(tslG1);
         Serial.print("tslG2: "); Serial.println(tslG2);
         Serial.print("tslG3: "); Serial.println(tslG3);
