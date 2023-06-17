@@ -2377,59 +2377,35 @@ void loop() {
     if ((mode == "request") && (millis() - lastTslReadTime > 200) && (useTSL == true)) {
 
         if (ethConnected) {
+
+            if (tslAckReceived == true) {
             
-            if (udp.parsePacket() > 0) {
+                if (udp.parsePacket() > 0) {
 
-                if (udp.available()) {
+                    if (udp.available()) {
 
-                    udp_len = udp.available();
+                        udp_len = udp.available();
 
-                    for(int i = 0; i < udp_len; i++) {
-                        int udp_dec = udp.read();
-                        
-                        udp_seq[i] = {udp_dec};
-
-                        if (initUdpSteam == false) {
-                            udp_seq_old[i] = {udp_dec};
-                        }
-
-                        if (first_udp_seq == true) {
-                            Serial.print("UDP DATAGRAM: ");
-                            first_udp_seq = false;
-                        }
+                        for(int i = 0; i < udp_len; i++) {
+                            int udp_dec = udp.read();
                             
-                        Serial.print(udp_seq[i]); Serial.print(" ");
-                    }
+                            udp_seq[i] = {udp_dec};
 
-                    Serial.println(" ");
-
-
-                    //init first old udp sequence
-                    if (initUdpSteam == false) {
-                        initUdpSteam = true;
-                    }
-
-                    //if someone changed i in the udp stream, dont block tsl
-                    for(int i = 0; i < udp_len; i++) {
-
-                        if (udp_seq[i] != udp_seq_old[i]) {
-                            blockTsl = false;
-                            break;
-                        } else {
-                            blockTsl = true;
+                            if (first_udp_seq == true) {
+                                Serial.print("UDP DATAGRAM: ");
+                                first_udp_seq = false;
+                            }
+                                
+                            Serial.print(udp_seq[i]); Serial.print(" ");
                         }
-                    }
 
-                    //give the old udp sequence the new sequence
-                    for(int i = 0; i < udp_len; i++) {
-                        udp_seq_old[i] = udp_seq[i];
-                    }
+                        Serial.println(" ");
 
-
-                    first_udp_seq = true;
-                    sendSequence = true;
+                        first_udp_seq = true;
+                        sendSequence = true;
+                    } 
                 } 
-            } 
+            }
             
 
             
@@ -2440,7 +2416,7 @@ void loop() {
 
 
             //tally bb off
-            if ((tally_bb == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 129) && (udp_seq[1] == 48) && (udp_seq[2] == 49)) {
+            if ((tally_bb == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 129) && (udp_seq[1] == 48) && (udp_seq[2] == 49) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("=bb off=");
                 destination = 0xbb;
                 receiverMode = 0x03;
@@ -2450,11 +2426,12 @@ void loop() {
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
 
             //tally bb green
-            if ((tally_bb == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 49)) {
+            if ((tally_bb == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 49) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("=bb green=");
                 destination = 0xbb;
                 receiverMode = 0x03;
@@ -2464,11 +2441,12 @@ void loop() {
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
 
             //tally bb red
-            if ((tally_bb == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 49)) {
+            if ((tally_bb == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 49) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("=bb red=");
                 destination = 0xbb;
                 receiverMode = 0x03;
@@ -2478,11 +2456,27 @@ void loop() {
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally bb red wip
+            if ((tally_bb == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 49) && (millis() - lastSwitchTime > 100)) {
+                Serial.println("=bb red wip=");
+                destination = 0xbb;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
             
             //tally cc off
-            if ((tally_cc == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 130) && (udp_seq[1] == 48) && (udp_seq[2] == 50)) {
+            if ((tally_cc == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 130) && (udp_seq[1] == 48) && (udp_seq[2] == 50) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("=cc off=");
                 destination = 0xcc;
                 receiverMode = 0x03;
@@ -2492,11 +2486,12 @@ void loop() {
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
 
             //tally cc green
-            if ((tally_cc == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 50)) {
+            if ((tally_cc == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 50) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("=cc green=");
                 destination = 0xcc;
                 receiverMode = 0x03;
@@ -2506,11 +2501,12 @@ void loop() {
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
 
             //tally cc red
-            if ((tally_cc == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 50)) {
+            if ((tally_cc == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 50) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("=cc red=");
                 destination = 0xcc;
                 receiverMode = 0x03;
@@ -2520,11 +2516,27 @@ void loop() {
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally cc red wip
+            if ((tally_cc == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 50) && (millis() - lastSwitchTime > 100)) {
+                Serial.println("=cc red wip=");
+                destination = 0xcc;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
             
             //tally dd off
-            if ((tally_dd == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 131) && (udp_seq[1] == 48) && (udp_seq[2] == 51)) {
+            if ((tally_dd == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 131) && (udp_seq[1] == 48) && (udp_seq[2] == 51) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("=dd off=");
                 destination = 0xdd;
                 receiverMode = 0x03;
@@ -2534,11 +2546,12 @@ void loop() {
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
 
             //tally dd green
-            if ((tally_dd == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 51)) {
+            if ((tally_dd == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 51) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("=dd green=");
                 destination = 0xdd;
                 receiverMode = 0x03;
@@ -2548,11 +2561,12 @@ void loop() {
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
 
             //tally dd red
-            if ((tally_dd == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 51)) {
+            if ((tally_dd == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 51) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("=dd red=");
                 destination = 0xdd;
                 receiverMode = 0x03;
@@ -2562,11 +2576,27 @@ void loop() {
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally dd red wip
+            if ((tally_dd == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 51) && (millis() - lastSwitchTime > 100)) {
+                Serial.println("=dd red wip=");
+                destination = 0xdd;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
 
             //tally ee off
-            if ((tally_ee == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 132) && (udp_seq[1] == 48) && (udp_seq[2] == 52)) {
+            if ((tally_ee == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 132) && (udp_seq[1] == 48) && (udp_seq[2] == 52) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("=ee off=");
                 destination = 0xee;
                 receiverMode = 0x03;
@@ -2576,11 +2606,12 @@ void loop() {
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
 
             //tally ee green
-            if ((tally_ee == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 52)) {
+            if ((tally_ee == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 52) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("=ee green=");
                 destination = 0xee;
                 receiverMode = 0x03;
@@ -2590,11 +2621,12 @@ void loop() {
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
 
             //tally ee red
-            if ((tally_ee == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 52)) {
+            if ((tally_ee == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 52) && (millis() - lastSwitchTime > 100)) {
                 Serial.println("=ee red=");
                 destination = 0xee;
                 receiverMode = 0x03;
@@ -2604,6 +2636,22 @@ void loop() {
                 mode = "acknowledge";
                 mode_s = "ack";
                 lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally ee red wip
+            if ((tally_ee == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 52) && (millis() - lastSwitchTime > 100)) {
+                Serial.println("=ee red wip=");
+                destination = 0xee;
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
                 clearValues();
             }
 
