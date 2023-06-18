@@ -392,10 +392,7 @@ String proc_state(const String& state){
     }
 
     if(state == "STATE_DISCOVER_TIME"){    
-            eeprom.begin("configuration", false); 
-            discoverTimeState = eeprom.getInt("distime", discoverTime);
-            eeprom.end();
-            sprintf(buf_discoverTime_state, "%d", discoverTimeState);  
+            sprintf(buf_discoverTime_state, "%d", discoverTime);  
             return buf_discoverTime_state;
     }
 
@@ -464,10 +461,7 @@ String proc_state(const String& state){
     }
 
     if(state == "STATE_UDP_PORT"){  
-        eeprom.begin("configuration", false); 
-        udpPortState = eeprom.getInt("udpport", udpPort);
-        eeprom.end();
-        sprintf(buf_udpPort_state, "%d", udpPortState);  
+        sprintf(buf_udpPort_state, "%d", udpPort);  
         return buf_udpPort_state;
     }
 
@@ -1166,13 +1160,13 @@ void setup() {
     //When upload some programs, esp clear the flash with the reason 1 and 14
     //When restart, only reason 12 is excecuted
 
-    
     Serial.print("CPU0 reset reason: ");
     Serial.println(rtc_get_reset_reason(0));
 
     Serial.print("CPU1 reset reason: ");
     Serial.println(rtc_get_reset_reason(1));
 
+    /*
     if ((rtc_get_reset_reason(0) == 1 && rtc_get_reset_reason(1) == 14)) {
             eeprom.begin("network", false);
             eeprom.clear();             //Clear the eeprom when the reset button is pushed
@@ -1181,6 +1175,7 @@ void setup() {
             eeprom.clear();
             eeprom.end();
     }
+    */
 
 //////////////////////////////////////////////////////////////////////
 
@@ -1221,7 +1216,9 @@ void setup() {
     eeprom.begin("configuration", false); 
     bool_tsl = eeprom.getBool("tsl", true);                         //change default tsl
     udpPort = eeprom.getInt("udpport", udpPort);     
+    Serial.println(udpPort);
     discoverTime = eeprom.getInt("distime", discoverTime);   
+    Serial.println(discoverTime);
     bool_esm = eeprom.getBool("esm", false);
     loraTxPower = eeprom.getInt("txpower", loraTxPower);            //if the eeprom is never written, then give the default value back
     
@@ -1832,8 +1829,6 @@ void setup() {
                 sprintf(buf_udpPort, "%s", input_port);
                 udpPortNew = atoi(buf_udpPort);
 
-                Serial.print("New UDP-Port: "); Serial.println(udpPortNew);
-
                 if ((udpPortNew < 999) || (udpPortNew > 10000)) {
                     Serial.println("ERROR!");
                     errorport = true;
@@ -1845,6 +1840,10 @@ void setup() {
                         eeprom.begin("configuration", false);                //false mean use read/write mode
                         eeprom.putInt("udpport", udpPortNew);     
                         eeprom.end(); 
+
+                        udpPort = udpPortNew;
+
+                        Serial.print("New UDP-Port: "); Serial.println(udpPortNew);
 
                         request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
                     } else{
@@ -1886,8 +1885,6 @@ void setup() {
                 sprintf(buf_discoverTime, "%s", input_discoverTime);
                 discoverTimeNew = atoi(buf_discoverTime);
 
-                Serial.print("New Discover Time: "); Serial.println(discoverTimeNew);
-
                 if ((discoverTimeNew < 30) || (discoverTimeNew > 600)) {
                     Serial.println("ERROR!");
                     errorDiscoverTime = true;
@@ -1899,6 +1896,10 @@ void setup() {
                         eeprom.begin("configuration", false);                //false mean use read/write mode
                         eeprom.putInt("distime", discoverTimeNew);     
                         eeprom.end(); 
+
+                        discoverTime = discoverTimeNew;
+
+                        Serial.print("New Discover Time: "); Serial.println(discoverTimeNew);
 
                         request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
                     } else{
