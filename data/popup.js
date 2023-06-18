@@ -12,6 +12,13 @@ function checkerRestart() {
     }
 }
 
+function checkerRestartRequired() {
+  var result = confirm('After the next RESTART, the changes will be executed. Are you sure?');
+    if (result == false) {
+      event.preventDefault();
+    }
+}
+
 function getURLParameter(sParam) {
   var sPageURL = window.location.search.substring(1);
   var sURLVariables = sPageURL.split('&');

@@ -31,6 +31,7 @@
 
 WiFiUDP udp;
 int udpPort = 5727;
+int udpPortState;
 int udpPortNew;
 
 String mode = "discover";
@@ -108,6 +109,8 @@ char buf_txpower[4];
 char buf_connectedTallys[4];
 char buf_udpPort[5];
 char buf_udpPort_state[5];
+char buf_discoverTime [4];
+char buf_discoverTime_state [4];
 
 char buf_html_ip[32];
 char buf_html_gw[32];
@@ -131,6 +134,7 @@ const char* param_new_password = "inputNewPassword";
 const char* param_ssid = "inputSSID";
 const char* param_wifipassword = "inputWLANPASSWORD";
 const char* param_udpport = "inputUdpPort";
+const char* param_distime = "inputDiscoverTime";
 
 ///////////////////////////////////////////////
 ///////// Setup Transmitter Values ////////////
@@ -191,6 +195,9 @@ int int_dns1Octet1, int_dns1Octet2, int_dns1Octet3, int_dns1Octet4;
 int int_dns2Octet1, int_dns2Octet2, int_dns2Octet3, int_dns2Octet4;
 int buf_rssi_bb_int = 0;
 int udp_len;
+int discoverTime = 120;
+int discoverTimeState;
+int discoverTimeNew;
 
 ///////////////////////////////////////////////
 //////////// Setup LORA Values ////////////////
@@ -241,6 +248,7 @@ bool errorip = false;
 bool notempty = false;
 bool errortxp = false;
 bool errorport = false;
+bool errorDiscoverTime = false;
 bool first_udp_seq = true;
 bool tslAckReceived = true;
 bool initUdpSteam = false;
@@ -383,6 +391,14 @@ String proc_state(const String& state){
             return buf_connectedTallys;
     }
 
+    if(state == "STATE_DISCOVER_TIME"){    
+            eeprom.begin("configuration", false); 
+            discoverTimeState = eeprom.getInt("distime", discoverTime);
+            eeprom.end();
+            sprintf(buf_discoverTime_state, "%d", discoverTimeState);  
+            return buf_discoverTime_state;
+    }
+
     if(state == "STATE_DHCP"){
         if(useSTATIC == true){
             html_state_dhcp = "OFF";
@@ -447,8 +463,11 @@ String proc_state(const String& state){
         return html_state_tsl;
     }
 
-    if(state == "STATE_UDP_PORT"){      
-        sprintf(buf_udpPort_state, "%d", udpPort);  
+    if(state == "STATE_UDP_PORT"){  
+        eeprom.begin("configuration", false); 
+        udpPortState = eeprom.getInt("udpport", udpPort);
+        eeprom.end();
+        sprintf(buf_udpPort_state, "%d", udpPortState);  
         return buf_udpPort_state;
     }
 
@@ -1202,6 +1221,7 @@ void setup() {
     eeprom.begin("configuration", false); 
     bool_tsl = eeprom.getBool("tsl", true);                         //change default tsl
     udpPort = eeprom.getInt("udpport", udpPort);     
+    discoverTime = eeprom.getInt("distime", discoverTime);   
     bool_esm = eeprom.getBool("esm", false);
     loraTxPower = eeprom.getInt("txpower", loraTxPower);            //if the eeprom is never written, then give the default value back
     
@@ -1812,7 +1832,7 @@ void setup() {
                 sprintf(buf_udpPort, "%s", input_port);
                 udpPortNew = atoi(buf_udpPort);
 
-                Serial.print("New UDP Port: "); Serial.println(udpPortNew);
+                Serial.print("New UDP-Port: "); Serial.println(udpPortNew);
 
                 if ((udpPortNew < 999) || (udpPortNew > 10000)) {
                     Serial.println("ERROR!");
@@ -1827,8 +1847,6 @@ void setup() {
                         eeprom.end(); 
 
                         request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
-                        delay(2000);
-                        ESP.restart();
                     } else{
                         request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
                     }
@@ -1837,6 +1855,60 @@ void setup() {
             }
 
             if(input_port == "" || errorport == true) {
+                request->send(SPIFFS, "/formaterror.html", String(), false, proc_state);
+            }
+
+        } else {
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
+        }
+    });
+
+    // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
+    server.on("/discover-time", HTTP_GET, [] (AsyncWebServerRequest *request) {
+        if (authenticated == true) {
+            String input_discoverTime;
+            String input_param_discoverTime;
+
+            // GET input6 value on <ESP_IP>/get?input6=<inputMessage>
+            if (request->hasParam(param_distime)) {
+            input_discoverTime = request->getParam(param_distime)->value();
+            input_param_discoverTime = param_distime;
+            }
+            // If empty, print no message
+            if (request->hasParam("")) {
+            input_discoverTime = "No message sent";
+            input_param_discoverTime = "none";
+            }
+
+            errorDiscoverTime = false;
+
+            if(input_discoverTime != "") {
+                sprintf(buf_discoverTime, "%s", input_discoverTime);
+                discoverTimeNew = atoi(buf_discoverTime);
+
+                Serial.print("New Discover Time: "); Serial.println(discoverTimeNew);
+
+                if ((discoverTimeNew < 30) || (discoverTimeNew > 600)) {
+                    Serial.println("ERROR!");
+                    errorDiscoverTime = true;
+                }
+                else {
+
+                    if (discoverTimeNew != discoverTime) {
+
+                        eeprom.begin("configuration", false);                //false mean use read/write mode
+                        eeprom.putInt("distime", discoverTimeNew);     
+                        eeprom.end(); 
+
+                        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+                    } else{
+                        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+                    }
+
+                }
+            }
+
+            if(input_discoverTime == "" || errorDiscoverTime == true) {
                 request->send(SPIFFS, "/formaterror.html", String(), false, proc_state);
             }
 
@@ -2219,7 +2291,7 @@ void loop() {
             break;
         }
 
-        if ((millis() - lastOfferTimeEnd > 30000) && (counterTallys >= 1)) {    // after 120 s of no new receivers, request mode
+        if ((millis() - lastOfferTimeEnd > discoverTime * 1000) && (counterTallys >= 1)) {    // after 120 s of no new receivers, request mode
             mode = "request"; 
             mode_s = "req";
             break;

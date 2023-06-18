@@ -56,7 +56,7 @@
                   <td align=left><input class="field" type="text" name="inputUdpPort" placeholder="%STATE_UDP_PORT%"></td>
                 </tr>
               </table>
-              <button class="button submit" type="submit" onclick="checkerRestart()" class="btn btn default">Submit</button>
+              <button class="button submit" type="submit" onclick="checkerRestartRequired()" class="btn btn default">Submit</button>
             </form>
           </div>
 
@@ -73,6 +73,19 @@
                 </td>
               </tr>
             </table>
+          </div>
+
+
+          <div class="content">
+            <form action="/discover-time">
+              <table>
+                <tr>
+                  <td align=right>Discover Time:</td>
+                  <td align=left><input class="field" type="text" name="inputDiscoverTime" placeholder="%STATE_DISCOVER_TIME% s"></td>
+                </tr>
+              </table>
+              <button class="button submit" type="submit" onclick="checkerRestartRequired()" class="btn btn default">Submit</button>
+            </form>
           </div>
 
 
@@ -123,7 +136,7 @@
                   <td align=left><input class="field" type="password" name="inputNewPassword" placeholder="%STATE_PASSWORD%"></td>
                 </tr>
               </table>
-              <button class="button submit" type="submit" onclick="checkerRestart()" class="btn btn default">Submit</button>
+              <button class="button submit" type="submit" onclick="checkerRestartRequired()" class="btn btn default">Submit</button>
             </form>
           </div>
 
