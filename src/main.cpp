@@ -233,12 +233,10 @@ bool initBattery = true;
 bool batteryAttention = false;
 bool batteryAttentionState = false;
 bool ethConnected = false;
-bool useSTATIC = false;
+bool useSTATIC = true;
 bool useWLAN = false;
 bool useTSL = true;
-bool bool_res = false;
 bool bool_esm = false;
-bool bool_tsl = true;
 bool ethState = false;
 bool loraInit = false;
 bool sdInit = false;
@@ -1034,94 +1032,106 @@ void endWIFI() {
 
 String sha1(String payloadStr){
 
-  const char *payload = payloadStr.c_str();
-  int size = 20;
-  byte shaResult[size];
-  mbedtls_md_context_t ctx;
-  mbedtls_md_type_t md_type = MBEDTLS_MD_SHA1;
-  const size_t payloadLength = strlen(payload);
-  mbedtls_md_init(&ctx);
-  mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 0);
-  mbedtls_md_starts(&ctx);
-  mbedtls_md_update(&ctx, (const unsigned char *) payload, payloadLength);
-  mbedtls_md_finish(&ctx, shaResult);
-  mbedtls_md_free(&ctx);
-  String hashStr = "";
+    const char *payload = payloadStr.c_str();
+    int size = 20;
+    byte shaResult[size];
+    mbedtls_md_context_t ctx;
+    mbedtls_md_type_t md_type = MBEDTLS_MD_SHA1;
+    const size_t payloadLength = strlen(payload);
+    mbedtls_md_init(&ctx);
+    mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 0);
+    mbedtls_md_starts(&ctx);
+    mbedtls_md_update(&ctx, (const unsigned char *) payload, payloadLength);
+    mbedtls_md_finish(&ctx, shaResult);
+    mbedtls_md_free(&ctx);
+    String hashStr = "";
 
-  for(uint16_t i = 0; i < size; i++) {
+    for(uint16_t i = 0; i < size; i++) {
 
-    String hex = String(shaResult[i], HEX);
-    if(hex.length() < 2) {
-      hex = "0" + hex;
+        String hex = String(shaResult[i], HEX);
+        if(hex.length() < 2) {
+            hex = "0" + hex;
+        }
+        
+        hashStr += hex;
     }
-    
-    hashStr += hex;
-    }
 
-  return hashStr;
+    return hashStr;
 }
 
 //////////////////////////////////////////////////////////////////////
 
 void handleLogin(AsyncWebServerRequest *request) {
 
-  Serial.println("AUTH handle login.");
-  String msg;
+    Serial.println("AUTH handle login.");
+    String msg;
 
-  if (request->hasHeader("Cookie")) {
-    // Print cookies
-    Serial.print("AUTH found cookie: ");
-    String cookie = request->header("Cookie");
-    Serial.println(cookie);
-  }
 
-  if (request->hasArg("username") && request->hasArg("password")) {
-    Serial.print("AUTH found parameter ");
+    eeprom.begin("configuration", false); 
 
-    if (request->arg("username") == www_username && request->arg("password") == www_password) {
-      AsyncWebServerResponse *response = request->beginResponse(301); //Sends 301 redirect
-      response->addHeader("Location", "/");
-      response->addHeader("Cache-Control", "no-cache");
-      String token = sha1(www_username + ":" + www_password + ":" + request->client()->remoteIP().toString());
-      Serial.print("Token: ");
-      Serial.println(token);
-      response->addHeader("Set-Cookie", "ESPSESSIONID=" + token);
-      request->send(response);
-      Serial.println("AUTH login successful.");
-      lastAuthentication = millis();
-      authenticated = true;
-      return;
+    www_username = eeprom.getString("user", www_username);
+    Serial.print("www_username: "); Serial.println(www_username);
+    
+    www_password = eeprom.getString("password", www_password);
+    Serial.print("www_password: "); Serial.println(www_password); 
+
+    eeprom.end();
+
+
+    if (request->hasHeader("Cookie")) {
+        // Print cookies
+        Serial.print("AUTH found cookie: ");
+        String cookie = request->header("Cookie");
+        Serial.println(cookie);
     }
 
-    msg = "Wrong Username or Password! Try again.";
-    Serial.println("AUTH login failed.");
-    AsyncWebServerResponse *response = request->beginResponse(301); //Sends 301 redirect
-    response->addHeader("Location", "/login.html?msg=" + msg);
-    response->addHeader("Cache-Control", "no-cache");
-    //request->send(response);
-    request->send(SPIFFS, "/authentificationfalse.html", String(), false, proc_state);
-    authenticated = false;
-    return;
-  }
+    if (request->hasArg("username") && request->hasArg("password")) {
+        Serial.print("AUTH found parameter ");
+
+        if (request->arg("username") == www_username && request->arg("password") == www_password) {
+        AsyncWebServerResponse *response = request->beginResponse(301); //Sends 301 redirect
+        response->addHeader("Location", "/");
+        response->addHeader("Cache-Control", "no-cache");
+        String token = sha1(www_username + ":" + www_password + ":" + request->client()->remoteIP().toString());
+        Serial.print("Token: ");
+        Serial.println(token);
+        response->addHeader("Set-Cookie", "ESPSESSIONID=" + token);
+        request->send(response);
+        Serial.println("AUTH login successful.");
+        lastAuthentication = millis();
+        authenticated = true;
+        return;
+        }
+
+        msg = "Wrong Username or Password! Try again.";
+        Serial.println("AUTH login failed.");
+        AsyncWebServerResponse *response = request->beginResponse(301); //Sends 301 redirect
+        response->addHeader("Location", "/login.html?msg=" + msg);
+        response->addHeader("Cache-Control", "no-cache");
+        //request->send(response);
+        request->send(SPIFFS, "/authentificationfalse.html", String(), false, proc_state);
+        authenticated = false;
+        return;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////
 
 void handleLogout(AsyncWebServerRequest *request) {
-  Serial.println("AUTH disconnection.");
-  AsyncWebServerResponse *response = request->beginResponse(301); //Sends 301 redirect
-  response->addHeader("Location", "/login.html?msg=User disconnected");
-  response->addHeader("Cache-Control", "no-cache");
-  response->addHeader("Set-Cookie", "ESPSESSIONID=0");
-  request->send(response);
-  authenticated = false;
-  return;
+    Serial.println("AUTH disconnection.");
+    AsyncWebServerResponse *response = request->beginResponse(301); //Sends 301 redirect
+    response->addHeader("Location", "/login.html?msg=User disconnected");
+    response->addHeader("Cache-Control", "no-cache");
+    response->addHeader("Set-Cookie", "ESPSESSIONID=0");
+    request->send(response);
+    authenticated = false;
+    return;
 }
 
 //////////////////////////////////////////////////////////////////////
 
 void handleNotFound(AsyncWebServerRequest *request) {
-  request->send(SPIFFS, "/notfound.html", String(), false, proc_state);
+    request->send(SPIFFS, "/notfound.html", String(), false, proc_state);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -1179,22 +1189,29 @@ void setup() {
 
 //////////////////////////////////////////////////////////////////////
 
-    /*
-    useSTATIC = true;
     eeprom.begin("network", false);                //false mean use read/write mode
-    eeprom.putBool("dhcp", useSTATIC);     
-    eeprom.end();
-    */
 
-    eeprom.begin("network", false);                //false mean use read/write mode
     useSTATIC = eeprom.getBool("dhcp", true);     //false mean default value if nothing returned
-    //Serial.print("useSTATIC: "); Serial.println(useSTATIC);
+    Serial.print("useSTATIC: "); Serial.println(useSTATIC);
+
     ssid = eeprom.getString("ssid", ssid);
+    Serial.print("ssid: "); Serial.println(ssid);
+
     wifipassword = eeprom.getString("wifipassword", wifipassword);
+    Serial.print("wifipassword: "); Serial.println(wifipassword);
+
     useIPOctet1 = eeprom.getInt("ipOctet1", 192);
+    Serial.print("useIPOctet1: "); Serial.println(useIPOctet1);
+
     useIPOctet2 = eeprom.getInt("ipOctet2", 168);
+    Serial.print("useIPOctet2: "); Serial.println(useIPOctet2);
+
     useIPOctet3 = eeprom.getInt("ipOctet3", 178);
+    Serial.print("useIPOctet3: "); Serial.println(useIPOctet3);
+
     useIPOctet4 = eeprom.getInt("ipOctet4", 100);
+    Serial.print("useIPOctet4: "); Serial.println(useIPOctet4);
+
     useGWOctet1 = eeprom.getInt("gwOctet1", 192);
     useGWOctet2 = eeprom.getInt("gwOctet2", 168);
     useGWOctet3 = eeprom.getInt("gwOctet3", 178);
@@ -1214,16 +1231,27 @@ void setup() {
     eeprom.end();
 
     eeprom.begin("configuration", false); 
-    bool_tsl = eeprom.getBool("tsl", true);                         //change default tsl
+
+    useTSL = eeprom.getBool("tsl", true);                         //change default tsl
+    Serial.print("useTSL: "); Serial.println(useTSL);
+
     udpPort = eeprom.getInt("udpport", udpPort);     
-    Serial.println(udpPort);
+    Serial.print("udpPort: "); Serial.println(udpPort);
+
     discoverTime = eeprom.getInt("distime", discoverTime);   
-    Serial.println(discoverTime);
+    Serial.print("discoverTime: "); Serial.println(discoverTime);
+
     bool_esm = eeprom.getBool("esm", false);
+    Serial.print("bool_esm: "); Serial.println(bool_esm);
+
     loraTxPower = eeprom.getInt("txpower", loraTxPower);            //if the eeprom is never written, then give the default value back
+    Serial.print("loraTxPower: "); Serial.println(loraTxPower);
     
     www_username = eeprom.getString("user", www_username);
+    Serial.print("www_username: "); Serial.println(www_username);
+    
     www_password = eeprom.getString("password", www_password);
+    Serial.print("www_password: "); Serial.println(www_password);
 
     transmissionPower = loraTxPower;  
 
@@ -1562,7 +1590,9 @@ void setup() {
 
             eeprom.begin("network", false);                //false mean use read/write mode
             eeprom.putString("ssid", input_ssid);
+            Serial.print("input_ssid: "); Serial.println(input_ssid);
             eeprom.putString("wifipassword", input_wlanpassword);
+            Serial.print("input_wlanpassword: "); Serial.println(input_wlanpassword);
             eeprom.end();
 
             request->send(SPIFFS, "/network.html", String(), false, proc_state);
@@ -1584,7 +1614,8 @@ void setup() {
         if (authenticated == true) {
             useTSL = true;
             eeprom.begin("configuration", false);                //false mean use read/write mode
-            eeprom.putBool("tsl", bool_tsl);     
+            eeprom.putBool("tsl", useTSL);     
+            Serial.print("useTSL: "); Serial.println(useTSL);
             eeprom.end();
             request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
         } else {
@@ -1596,7 +1627,8 @@ void setup() {
         if (authenticated == true) {
             useTSL = false;
             eeprom.begin("configuration", false);                //false mean use read/write mode
-            eeprom.putBool("tsl", bool_tsl);     
+            eeprom.putBool("tsl", useTSL); 
+            Serial.print("useTSL: "); Serial.println(useTSL);    
             eeprom.end();
             request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
         } else {
@@ -1610,7 +1642,8 @@ void setup() {
             if (bool_esm == true){ esmFlag = 0x01; }
             if (bool_esm == false){ esmFlag = 0x00; }
             eeprom.begin("configuration", false);                //false mean use read/write mode
-            eeprom.putBool("esm", bool_esm);     
+            eeprom.putBool("esm", bool_esm);    
+            Serial.print("bool_esm: "); Serial.println(bool_esm); 
             eeprom.end();
             request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
         } else {
@@ -1624,7 +1657,8 @@ void setup() {
             if (bool_esm == true){ esmFlag = 0x01; }
             if (bool_esm == false){ esmFlag = 0x00; }
             eeprom.begin("configuration", false);                //false mean use read/write mode
-            eeprom.putBool("esm", bool_esm);     
+            eeprom.putBool("esm", bool_esm);    
+            Serial.print("bool_esm: "); Serial.println(bool_esm); 
             eeprom.end();
             request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
         } else {
@@ -1760,7 +1794,8 @@ void setup() {
                         transmissionPower = loraTxPowerNew;             //send via lora
 
                         eeprom.begin("configuration", false);                //false mean use read/write mode
-                        eeprom.putInt("txpower", loraTxPower);     
+                        eeprom.putInt("txpower", loraTxPower);    
+                        Serial.print("loraTxPower: "); Serial.println(loraTxPower);  
                         eeprom.end(); 
 
                         if (tally_bb == true){
@@ -1838,7 +1873,8 @@ void setup() {
                     if (udpPortNew != udpPort) {
 
                         eeprom.begin("configuration", false);                //false mean use read/write mode
-                        eeprom.putInt("udpport", udpPortNew);     
+                        eeprom.putInt("udpport", udpPortNew);
+                        Serial.print("udpPortNew: "); Serial.println(udpPortNew);     
                         eeprom.end(); 
 
                         udpPort = udpPortNew;
@@ -1894,7 +1930,8 @@ void setup() {
                     if (discoverTimeNew != discoverTime) {
 
                         eeprom.begin("configuration", false);                //false mean use read/write mode
-                        eeprom.putInt("distime", discoverTimeNew);     
+                        eeprom.putInt("distime", discoverTimeNew);    
+                        Serial.print("discoverTimeNew: "); Serial.println(discoverTimeNew); 
                         eeprom.end(); 
 
                         discoverTime = discoverTimeNew;
@@ -1944,12 +1981,12 @@ void setup() {
 
             eeprom.begin("configuration", false);                //false mean use read/write mode
             eeprom.putString("user", input_new_username);  
-            eeprom.putString("password", input_new_password);    
+            Serial.print("input_new_username: "); Serial.println(input_new_username); 
+            eeprom.putString("password", input_new_password);   
+            Serial.print("input_new_password: "); Serial.println(input_new_password);  
             eeprom.end(); 
 
             request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
-            delay(2000);
-            ESP.restart();
 
         } else {
             request->send(SPIFFS, "/login.html", String(), false, proc_state);
@@ -2035,9 +2072,13 @@ void setup() {
                 else {
                     eeprom.begin("network", false);                //false mean use read/write mode
                     eeprom.putInt("ipOctet1", int_ipOctet1);  
-                    eeprom.putInt("ipOctet2", int_ipOctet2);    
+                    Serial.print("int_ipOctet1: "); Serial.println(int_ipOctet1); 
+                    eeprom.putInt("ipOctet2", int_ipOctet2);   
+                    Serial.print("int_ipOctet2: "); Serial.println(int_ipOctet2);  
                     eeprom.putInt("ipOctet3", int_ipOctet3);
-                    eeprom.putInt("ipOctet4", int_ipOctet4);            
+                    Serial.print("int_ipOctet3: "); Serial.println(int_ipOctet3); 
+                    eeprom.putInt("ipOctet4", int_ipOctet4);  
+                    Serial.print("int_ipOctet4: "); Serial.println(int_ipOctet4);           
                     eeprom.end();
                 }
             }
