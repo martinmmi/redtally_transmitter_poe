@@ -108,6 +108,20 @@
               <button class="button submit" type="submit" onclick="checkerRestart()" class="btn btn default">Submit</button>
             </form>
           </div>
+
+
+          <div class="content">
+            <p>TSL-Application Port:</p>
+            <form action="/get-port">
+              <table>
+                <tr>
+                  <td align=right>UDP-Port:</td>
+                  <td align=left><input class="field" type="text" name="inputUdpPort" placeholder="%STATE_UDP_PORT%"></td>
+                </tr>
+              </table>
+              <button class="button submit" type="submit" onclick="checkerRestartRequired()" class="btn btn default">Submit</button>
+            </form>
+          </div>
           
 
           <div class="return">

@@ -32,7 +32,7 @@
 
           <div class="content">
             <div class="firstcontent">
-              <p>MODE: <strong>%STATE_TSL%</strong></p>
+              <p>INPUT MODE: <strong>%STATE_TSL%</strong></p>
             </div>
             <table>
               <tr>
@@ -45,24 +45,37 @@
               </tr>
             </table>
           </div>
-          <h3>*Only TSL v3.1 via UDP is available.</h3>
+          <h3>*Only TSL v3.1 via UDP is available for Ross Carbonite Devices.</h3>
 
-
+          
           <div class="content">
-            <form action="/get-port">
+            <p>TSL-ID-ASSIGNMENT:</p>
+            <form action="/tsl-assignment">
               <table>
                 <tr>
-                  <td align=right>UDP-Port:</td>
-                  <td align=left><input class="field" type="text" name="inputUdpPort" placeholder="%STATE_UDP_PORT%"></td>
+                  <td align=right>TALLY BB ID:</td>
+                  <td align=left><input class="field" type="text" name="inputtslbbassi" placeholder="%STATE_ASSI_BB%"></td>
+                </tr>
+                <tr>
+                  <td align=right>TALLY CC ID:</td>
+                  <td align=left><input class="field" type="text" name="inputtslccassi" placeholder="%STATE_ASSI_CC%"></td>
+                </tr>
+                <tr>
+                  <td align=right>TALLY DD ID:</td>
+                  <td align=left><input class="field" type="text" name="inputtslddassi" placeholder="%STATE_ASSI_DD%"></td>
+                </tr>
+                <tr>
+                  <td align=right>TALLY EE ID:</td>
+                  <td align=left><input class="field" type="text" name="inputtsleeassi" placeholder="%STATE_ASSI_EE%"></td>
                 </tr>
               </table>
-              <button class="button submit" type="submit" onclick="checkerRestartRequired()" class="btn btn default">Submit</button>
+              <button class="button submit" type="submit" onclick="checkerID()" class="btn btn default">Submit</button>
             </form>
           </div>
 
 
           <div class="content">
-            <p>ESM MODE:<strong> %STATE_ESM%</strong></p>
+            <p>ENERGY SAVE MODE:<strong> %STATE_ESM%</strong></p>
             <table>
               <tr>
                 <td>
@@ -77,6 +90,7 @@
 
 
           <div class="content">
+            <p>DISCOVER TIME:</p>
             <form action="/discover-time">
               <table>
                 <tr>
@@ -142,14 +156,20 @@
 
 
           <div class="content">
-            <p>RESTART SYSTEM:</p>
-            <a href="/restart"><button class="button restart" onclick="checkerRestart()" class="btn btn default">Restart</button></a>
+            <p>SAVE DATA:</p>
+            <a href="/savedata"><button class="button save" onclick="checkerSave()" class="btn btn default">SAVE</button></a>
+          </div>
+          
+
+          <div class="content">
+            <p>RESTART:</p>
+            <a href="/restart"><button class="button restart" onclick="checkerRestart()" class="btn btn default">RESTART</button></a>
           </div>
 
 
           <div class="content">
-            <p>FACTORY RESET SYSTEM:</p>
-            <a href="/factoryreset"><button class="button reset" onclick="checkerRestart()" class="btn btn default">Factory Reset</button></a>
+            <p>FACTORY RESET:</p>
+            <a href="/factoryreset"><button class="button reset" onclick="checkerRestart()" class="btn btn default">FACTORY RESET</button></a>
           </div>
 
 

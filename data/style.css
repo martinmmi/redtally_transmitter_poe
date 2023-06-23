@@ -269,12 +269,21 @@ h3 {
   background-color: #575757;
 }
 
-.restart {
+
+.save {
   background-color: #b76241;
 }
 
-.restart:hover {
+.save:hover {
   background-color: #ca7756;
+}
+
+.restart {
+  background-color: #221246;
+}
+
+.restart:hover {
+  background-color: #2a1757;
 }
 
 .reset {

@@ -109,8 +109,16 @@ char buf_txpower[4];
 char buf_connectedTallys[4];
 char buf_udpPort[5];
 char buf_udpPort_state[5];
-char buf_discoverTime [4];
+char buf_discoverTime[4];
 char buf_discoverTime_state [4];
+char buf_tslbbassi[2];
+char buf_tslbbassi_state[2];
+char buf_tslccassi[2];
+char buf_tslccassi_state[2];
+char buf_tslddassi[2];
+char buf_tslddassi_state[2];
+char buf_tsleeassi[2];
+char buf_tsleeassi_state[2];
 
 char buf_html_ip[32];
 char buf_html_gw[32];
@@ -135,6 +143,10 @@ const char* param_ssid = "inputSSID";
 const char* param_wifipassword = "inputWLANPASSWORD";
 const char* param_udpport = "inputUdpPort";
 const char* param_distime = "inputDiscoverTime";
+const char* param_bbassi = "inputtslbbassi";
+const char* param_ccassi = "inputtslccassi";
+const char* param_ddassi = "inputtslddassi";
+const char* param_eeassi = "inputtsleeassi";
 
 ///////////////////////////////////////////////
 ///////// Setup Transmitter Values ////////////
@@ -196,8 +208,12 @@ int int_dns2Octet1, int_dns2Octet2, int_dns2Octet3, int_dns2Octet4;
 int buf_rssi_bb_int = 0;
 int udp_len;
 int discoverTime = 120;
-int discoverTimeState;
 int discoverTimeNew;
+int tslbbassi = 1;
+int tslccassi = 2;
+int tslddassi = 3;
+int tsleeassi = 4;
+int tslbbassiNew, tslccassiNew, tslddassiNew, tsleeassiNew;
 
 ///////////////////////////////////////////////
 //////////// Setup LORA Values ////////////////
@@ -247,11 +263,16 @@ bool notempty = false;
 bool errortxp = false;
 bool errorport = false;
 bool errorDiscoverTime = false;
+bool errorTslBBAssi= false;
+bool errorTslCCAssi= false;
+bool errorTslDDAssi= false;
+bool errorTslEEAssi= false;
 bool first_udp_seq = true;
 bool tslAckReceived = true;
 bool initUdpSteam = false;
 bool blockTsl = false;
 bool sendSequence = false;
+bool shutdown = false;
 
 ///////////////////////////////////////////////
 ///////////////////////////////////////////////
@@ -392,6 +413,26 @@ String proc_state(const String& state){
     if(state == "STATE_DISCOVER_TIME"){    
             sprintf(buf_discoverTime_state, "%d", discoverTime);  
             return buf_discoverTime_state;
+    }
+
+    if(state == "STATE_ASSI_BB"){    
+            sprintf(buf_tslbbassi_state, "%d", tslbbassi);  
+            return buf_tslbbassi_state;
+    }
+
+    if(state == "STATE_ASSI_CC"){    
+            sprintf(buf_tslccassi_state, "%d", tslccassi);  
+            return buf_tslccassi_state;
+    }
+
+    if(state == "STATE_ASSI_DD"){    
+            sprintf(buf_tslddassi_state, "%d", tslddassi);  
+            return buf_tslddassi_state;
+    }
+
+    if(state == "STATE_ASSI_EE"){    
+            sprintf(buf_tsleeassi_state, "%d", tsleeassi);  
+            return buf_tsleeassi_state;
     }
 
     if(state == "STATE_DHCP"){
@@ -1170,14 +1211,19 @@ void setup() {
     //When upload some programs, esp clear the flash with the reason 1 and 14
     //When restart, only reason 12 is excecuted
 
+    eeprom.begin("configuration", false);                //false mean use read/write mode
+
+    shutdown = eeprom.getBool("shut", false);    
+    Serial.print("shutdown: "); Serial.println(shutdown); 
+    eeprom.end();
+
     Serial.print("CPU0 reset reason: ");
     Serial.println(rtc_get_reset_reason(0));
 
     Serial.print("CPU1 reset reason: ");
     Serial.println(rtc_get_reset_reason(1));
 
-    /*
-    if ((rtc_get_reset_reason(0) == 1 && rtc_get_reset_reason(1) == 14)) {
+    if (rtc_get_reset_reason(0) == 1 && rtc_get_reset_reason(1) == 14 && shutdown == false) {
             eeprom.begin("network", false);
             eeprom.clear();             //Clear the eeprom when the reset button is pushed
             eeprom.end();
@@ -1185,7 +1231,14 @@ void setup() {
             eeprom.clear();
             eeprom.end();
     }
-    */
+
+    if (shutdown == true){
+        shutdown = false;
+        eeprom.begin("configuration", false);                //false mean use read/write mode
+        eeprom.putBool("shut", shutdown);    
+        Serial.print("shutdown: "); Serial.println(shutdown); 
+        eeprom.end();
+    }
 
 //////////////////////////////////////////////////////////////////////
 
@@ -1193,6 +1246,9 @@ void setup() {
 
     useSTATIC = eeprom.getBool("dhcp", true);     //false mean default value if nothing returned
     Serial.print("useSTATIC: "); Serial.println(useSTATIC);
+
+    udpPort = eeprom.getInt("udpport", udpPort);     
+    Serial.print("udpPort: "); Serial.println(udpPort);
 
     ssid = eeprom.getString("ssid", ssid);
     Serial.print("ssid: "); Serial.println(ssid);
@@ -1235,8 +1291,17 @@ void setup() {
     useTSL = eeprom.getBool("tsl", true);                         //change default tsl
     Serial.print("useTSL: "); Serial.println(useTSL);
 
-    udpPort = eeprom.getInt("udpport", udpPort);     
-    Serial.print("udpPort: "); Serial.println(udpPort);
+    tslbbassi = eeprom.getInt("tslbbid", tslbbassi);
+    Serial.print("tslbbassi: "); Serial.println(tslbbassi);
+
+    tslccassi = eeprom.getInt("tslccid", tslccassi);
+    Serial.print("tslccassi: "); Serial.println(tslccassi);
+
+    tslddassi = eeprom.getInt("tslddid", tslddassi);
+    Serial.print("tslddassi: "); Serial.println(tslddassi);
+
+    tsleeassi = eeprom.getInt("tsleeid", tsleeassi);
+    Serial.print("tsleeassi: "); Serial.println(tsleeassi);
 
     discoverTime = eeprom.getInt("distime", discoverTime);   
     Serial.print("discoverTime: "); Serial.println(discoverTime);
@@ -1666,6 +1731,21 @@ void setup() {
         }
     });
 
+    server.on("/savedata", HTTP_GET, [](AsyncWebServerRequest *request){
+        if (authenticated == true) {
+
+            shutdown = true;
+            eeprom.begin("configuration", false);                //false mean use read/write mode
+            eeprom.putBool("shut", shutdown);    
+            Serial.print("shutdown: "); Serial.println(shutdown); 
+            eeprom.end();
+            request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+
+        } else {
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
+        }
+    });
+
     server.on("/restart", HTTP_GET, [](AsyncWebServerRequest *request){
         if (authenticated == true) {
             resFlag = 0x01;
@@ -1872,7 +1952,7 @@ void setup() {
 
                     if (udpPortNew != udpPort) {
 
-                        eeprom.begin("configuration", false);                //false mean use read/write mode
+                        eeprom.begin("network", false);                //false mean use read/write mode
                         eeprom.putInt("udpport", udpPortNew);
                         Serial.print("udpPortNew: "); Serial.println(udpPortNew);     
                         eeprom.end(); 
@@ -1881,9 +1961,9 @@ void setup() {
 
                         Serial.print("New UDP-Port: "); Serial.println(udpPortNew);
 
-                        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+                        request->send(SPIFFS, "/network.html", String(), false, proc_state);
                     } else{
-                        request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+                        request->send(SPIFFS, "/network.html", String(), false, proc_state);
                     }
 
                 }
@@ -1954,6 +2034,166 @@ void setup() {
             request->send(SPIFFS, "/login.html", String(), false, proc_state);
         }
     });
+
+
+    // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
+    server.on("/tsl-assignment", HTTP_GET, [] (AsyncWebServerRequest *request) {
+        if (authenticated == true) {
+            String input_tslbbassi, input_tslccassi, input_tslddassi, input_tsleeassi;
+            String input_param_tslbbassi, input_param_tslccassi, input_param_tslddassi, input_param_tsleeassi;
+
+            if (request->hasParam(param_bbassi)) {
+            input_tslbbassi = request->getParam(param_bbassi)->value();
+            input_param_tslbbassi = param_bbassi;
+            }
+            if (request->hasParam(param_ccassi)) {
+            input_tslccassi = request->getParam(param_ccassi)->value();
+            input_param_tslccassi = param_ccassi;
+            }
+            if (request->hasParam(param_ddassi)) {
+            input_tslddassi = request->getParam(param_ddassi)->value();
+            input_param_tslddassi = param_ddassi;
+            }
+            if (request->hasParam(param_eeassi)) {
+            input_tsleeassi = request->getParam(param_eeassi)->value();
+            input_param_tsleeassi = param_eeassi;
+            }
+            // If empty, print no message
+            if (request->hasParam("")) {
+            input_tslbbassi = "No message sent";
+            input_param_tslbbassi = "none";
+            }
+            // If empty, print no message
+            if (request->hasParam("")) {
+            input_tslccassi = "No message sent";
+            input_param_tslccassi = "none";
+            }
+            // If empty, print no message
+            if (request->hasParam("")) {
+            input_tslddassi = "No message sent";
+            input_param_tslddassi = "none";
+            }
+            // If empty, print no message
+            if (request->hasParam("")) {
+            input_tsleeassi = "No message sent";
+            input_param_tsleeassi = "none";
+            }
+
+            errorTslBBAssi = false;
+
+            if(input_tslbbassi != "") {
+                sprintf(buf_tslbbassi, "%s", input_tslbbassi);
+                tslbbassiNew = atoi(buf_tslbbassi);
+
+                if ((tslbbassiNew < 1) || (tslbbassiNew > 8)) {
+                    Serial.println("ERROR!");
+                    errorTslBBAssi = true;
+                }
+                else {
+
+                    if (tslbbassiNew != tslbbassi) {
+
+                        eeprom.begin("configuration", false);                //false mean use read/write mode
+                        eeprom.putInt("tslbbid", tslbbassiNew);    
+                        Serial.print("tslbbassiNew: "); Serial.println(tslbbassiNew); 
+                        eeprom.end(); 
+
+                        tslbbassi = tslbbassiNew;
+
+                        Serial.print("tslbbassiNew: "); Serial.println(tslbbassiNew);
+                    } 
+                }
+            }
+
+            errorTslCCAssi = false;
+
+            if(input_tslccassi != "") {
+                sprintf(buf_tslccassi, "%s", input_tslccassi);
+                tslccassiNew = atoi(buf_tslccassi);
+
+                if ((tslccassiNew < 1) || (tslccassiNew > 8)) {
+                    Serial.println("ERROR!");
+                    errorTslCCAssi = true;
+                }
+                else {
+
+                    if (tslccassiNew != tslccassi) {
+
+                        eeprom.begin("configuration", false);                //false mean use read/write mode
+                        eeprom.putInt("tslccid", tslccassiNew);    
+                        Serial.print("tslccassiNew: "); Serial.println(tslccassiNew); 
+                        eeprom.end(); 
+
+                        tslccassi = tslccassiNew;
+
+                        Serial.print("tslccassiNew: "); Serial.println(tslccassiNew);
+                    } 
+                }
+            }
+
+            errorTslDDAssi = false;
+
+            if(input_tslddassi != "") {
+                sprintf(buf_tslddassi, "%s", input_tslddassi);
+                tslddassiNew = atoi(buf_tslddassi);
+
+                if ((tslddassiNew < 1) || (tslddassiNew > 8)) {
+                    Serial.println("ERROR!");
+                    errorTslDDAssi = true;
+                }
+                else {
+
+                    if (tslddassiNew != tslddassi) {
+
+                        eeprom.begin("configuration", false);                //false mean use read/write mode
+                        eeprom.putInt("tslddid", tslddassiNew);    
+                        Serial.print("tslddassiNew: "); Serial.println(tslddassiNew); 
+                        eeprom.end(); 
+
+                        tslddassi = tslddassiNew;
+
+                        Serial.print("tslddassiNew: "); Serial.println(tslddassiNew);
+                    } 
+                }
+            }
+
+            errorTslEEAssi = false;
+
+            if(input_tsleeassi != "") {
+                sprintf(buf_tsleeassi, "%s", input_tsleeassi);
+                tsleeassiNew = atoi(buf_tsleeassi);
+
+                if ((tsleeassiNew < 1) || (tsleeassiNew > 8)) {
+                    Serial.println("ERROR!");
+                    errorTslEEAssi = true;
+                }
+                else {
+
+                    if (tsleeassiNew != tsleeassi) {
+
+                        eeprom.begin("configuration", false);                //false mean use read/write mode
+                        eeprom.putInt("tsleeid", tsleeassiNew);    
+                        Serial.print("tsleeassiNew: "); Serial.println(tsleeassiNew); 
+                        eeprom.end(); 
+
+                        tsleeassi = tsleeassiNew;
+
+                        Serial.print("tsleeassiNew: "); Serial.println(tsleeassiNew);
+                    }
+                }
+            }
+
+            if(input_tslbbassi == "" || input_tslccassi == "" || input_tslddassi == "" || input_tsleeassi == "" || errorTslBBAssi == true || errorTslCCAssi == true || errorTslDDAssi == true || errorTslEEAssi == true) {
+                request->send(SPIFFS, "/formaterror.html", String(), false, proc_state);
+            } else {
+                request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+            }
+
+        } else {
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
+        }
+    });
+
 
     // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
     server.on("/user-change", HTTP_GET, [] (AsyncWebServerRequest *request) {
@@ -2557,9 +2797,12 @@ void loop() {
 
 
             //tally bb off
-            if ((tally_bb == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 129) && (udp_seq[1] == 48) && (udp_seq[2] == 49) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 1) && (tally_bb == true)) || ((tslccassi == 1) && (tally_cc == true)) || ((tslddassi == 1) && (tally_dd == true)) || ((tsleeassi == 1) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 129) && (udp_seq[1] == 48) && (udp_seq[2] == 49) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=bb off=");
-                destination = 0xbb;
+                if ((tslbbassi == 1) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 1) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 1) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 1) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x00;
                 receiverColor = 0x00;
@@ -2572,9 +2815,12 @@ void loop() {
             }
 
             //tally bb green
-            if ((tally_bb == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 49) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 1) && (tally_bb == true)) || ((tslccassi == 1) && (tally_cc == true)) || ((tslddassi == 1) && (tally_dd == true)) || ((tsleeassi == 1) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 49) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=bb green=");
-                destination = 0xbb;
+                if ((tslbbassi == 1) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 1) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 1) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 1) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x02;
@@ -2587,8 +2833,12 @@ void loop() {
             }
 
             //tally bb red
-            if ((tally_bb == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 49) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 1) && (tally_bb == true)) || ((tslccassi == 1) && (tally_cc == true)) || ((tslddassi == 1) && (tally_dd == true)) || ((tsleeassi == 1) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 49) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=bb red=");
+                if ((tslbbassi == 1) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 1) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 1) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 1) && (tally_ee == true)){destination = 0xee;}
                 destination = 0xbb;
                 receiverMode = 0x03;
                 receiverState = 0x01;
@@ -2602,9 +2852,12 @@ void loop() {
             }
 
             //tally bb red wip
-            if ((tally_bb == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 49) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 1) && (tally_bb == true)) || ((tslccassi == 1) && (tally_cc == true)) || ((tslddassi == 1) && (tally_dd == true)) || ((tsleeassi == 1) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 49) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=bb red wip=");
-                destination = 0xbb;
+                if ((tslbbassi == 1) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 1) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 1) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 1) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x01;
@@ -2617,9 +2870,12 @@ void loop() {
             }
             
             //tally cc off
-            if ((tally_cc == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 130) && (udp_seq[1] == 48) && (udp_seq[2] == 50) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 2) && (tally_bb == true)) || ((tslccassi == 2) && (tally_cc == true)) || ((tslddassi == 2) && (tally_dd == true)) || ((tsleeassi == 2) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 130) && (udp_seq[1] == 48) && (udp_seq[2] == 50) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=cc off=");
-                destination = 0xcc;
+                if ((tslbbassi == 2) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 2) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 2) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 2) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x00;
                 receiverColor = 0x00;
@@ -2632,9 +2888,12 @@ void loop() {
             }
 
             //tally cc green
-            if ((tally_cc == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 50) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 2) && (tally_bb == true)) || ((tslccassi == 2) && (tally_cc == true)) || ((tslddassi == 2) && (tally_dd == true)) || ((tsleeassi == 2) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 50) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=cc green=");
-                destination = 0xcc;
+                if ((tslbbassi == 2) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 2) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 2) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 2) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x02;
@@ -2647,9 +2906,12 @@ void loop() {
             }
 
             //tally cc red
-            if ((tally_cc == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 50) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 2) && (tally_bb == true)) || ((tslccassi == 2) && (tally_cc == true)) || ((tslddassi == 2) && (tally_dd == true)) || ((tsleeassi == 2) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 50) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=cc red=");
-                destination = 0xcc;
+                if ((tslbbassi == 2) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 2) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 2) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 2) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x01;
@@ -2662,9 +2924,12 @@ void loop() {
             }
 
             //tally cc red wip
-            if ((tally_cc == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 50) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 2) && (tally_bb == true)) || ((tslccassi == 2) && (tally_cc == true)) || ((tslddassi == 2) && (tally_dd == true)) || ((tsleeassi == 2) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 50) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=cc red wip=");
-                destination = 0xcc;
+                if ((tslbbassi == 2) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 2) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 2) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 2) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x01;
@@ -2677,9 +2942,12 @@ void loop() {
             }
             
             //tally dd off
-            if ((tally_dd == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 131) && (udp_seq[1] == 48) && (udp_seq[2] == 51) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 3) && (tally_bb == true)) || ((tslccassi == 3) && (tally_cc == true)) || ((tslddassi == 3) && (tally_dd == true)) || ((tsleeassi == 3) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 131) && (udp_seq[1] == 48) && (udp_seq[2] == 51) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=dd off=");
-                destination = 0xdd;
+                if ((tslbbassi == 3) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 3) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 3) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 3) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x00;
                 receiverColor = 0x00;
@@ -2692,9 +2960,12 @@ void loop() {
             }
 
             //tally dd green
-            if ((tally_dd == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 51) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 3) && (tally_bb == true)) || ((tslccassi == 3) && (tally_cc == true)) || ((tslddassi == 3) && (tally_dd == true)) || ((tsleeassi == 3) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 51) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=dd green=");
-                destination = 0xdd;
+                if ((tslbbassi == 3) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 3) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 3) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 3) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x02;
@@ -2707,9 +2978,12 @@ void loop() {
             }
 
             //tally dd red
-            if ((tally_dd == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 51) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 3) && (tally_bb == true)) || ((tslccassi == 3) && (tally_cc == true)) || ((tslddassi == 3) && (tally_dd == true)) || ((tsleeassi == 3) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 51) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=dd red=");
-                destination = 0xdd;
+                if ((tslbbassi == 3) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 3) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 3) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 3) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x01;
@@ -2722,9 +2996,12 @@ void loop() {
             }
 
             //tally dd red wip
-            if ((tally_dd == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 51) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 3) && (tally_bb == true)) || ((tslccassi == 3) && (tally_cc == true)) || ((tslddassi == 3) && (tally_dd == true)) || ((tsleeassi == 3) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 51) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=dd red wip=");
-                destination = 0xdd;
+                if ((tslbbassi == 3) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 3) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 3) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 3) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x01;
@@ -2737,9 +3014,12 @@ void loop() {
             }
 
             //tally ee off
-            if ((tally_ee == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 132) && (udp_seq[1] == 48) && (udp_seq[2] == 52) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 4) && (tally_bb == true)) || ((tslccassi == 4) && (tally_cc == true)) || ((tslddassi == 4) && (tally_dd == true)) || ((tsleeassi == 4) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 132) && (udp_seq[1] == 48) && (udp_seq[2] == 52) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=ee off=");
-                destination = 0xee;
+                if ((tslbbassi == 4) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 4) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 4) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 4) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x00;
                 receiverColor = 0x00;
@@ -2752,9 +3032,12 @@ void loop() {
             }
 
             //tally ee green
-            if ((tally_ee == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 52) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 4) && (tally_bb == true)) || ((tslccassi == 4) && (tally_cc == true)) || ((tslddassi == 4) && (tally_dd == true)) || ((tsleeassi == 4) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 52) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=ee green=");
-                destination = 0xee;
+                if ((tslbbassi == 4) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 4) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 4) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 4) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x02;
@@ -2767,9 +3050,12 @@ void loop() {
             }
 
             //tally ee red
-            if ((tally_ee == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 52) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 4) && (tally_bb == true)) || ((tslccassi == 4) && (tally_cc == true)) || ((tslddassi == 4) && (tally_dd == true)) || ((tsleeassi == 4) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 52) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=ee red=");
-                destination = 0xee;
+                if ((tslbbassi == 4) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 4) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 4) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 4) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x01;
@@ -2782,9 +3068,300 @@ void loop() {
             }
 
             //tally ee red wip
-            if ((tally_ee == true) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 52) && (millis() - lastSwitchTime > 25)) {
+            if ((((tslbbassi == 4) && (tally_bb == true)) || ((tslccassi == 4) && (tally_cc == true)) || ((tslddassi == 4) && (tally_dd == true)) || ((tsleeassi == 4) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 52) && (millis() - lastSwitchTime > 25)) {
                 Serial.println("=ee red wip=");
-                destination = 0xee;
+                if ((tslbbassi == 4) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 4) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 4) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 4) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally ww off
+            if ((((tslbbassi == 5) && (tally_bb == true)) || ((tslccassi == 5) && (tally_cc == true)) || ((tslddassi == 5) && (tally_dd == true)) || ((tsleeassi == 5) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 133) && (udp_seq[1] == 48) && (udp_seq[2] == 53) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=ww off=");
+                if ((tslbbassi == 5) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 5) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 5) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 5) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally ww green
+            if ((((tslbbassi == 5) && (tally_bb == true)) || ((tslccassi == 5) && (tally_cc == true)) || ((tslddassi == 5) && (tally_dd == true)) || ((tsleeassi == 5) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 53) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=ww green=");
+                if ((tslbbassi == 5) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 5) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 5) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 5) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x02;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally ww red
+            if ((((tslbbassi == 5) && (tally_bb == true)) || ((tslccassi == 5) && (tally_cc == true)) || ((tslddassi == 5) && (tally_dd == true)) || ((tsleeassi == 5) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 53) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=ww red=");
+                if ((tslbbassi == 5) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 5) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 5) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 5) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally ww red wip
+            if ((((tslbbassi == 5) && (tally_bb == true)) || ((tslccassi == 5) && (tally_cc == true)) || ((tslddassi == 5) && (tally_dd == true)) || ((tsleeassi == 5) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 53) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=ww red wip=");
+                if ((tslbbassi == 5) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 5) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 5) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 5) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally xx off
+            if ((((tslbbassi == 6) && (tally_bb == true)) || ((tslccassi == 6) && (tally_cc == true)) || ((tslddassi == 6) && (tally_dd == true)) || ((tsleeassi == 6) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 134) && (udp_seq[1] == 48) && (udp_seq[2] == 54) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=xx off=");
+                if ((tslbbassi == 6) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 6) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 6) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 6) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally xx green
+            if ((((tslbbassi == 6) && (tally_bb == true)) || ((tslccassi == 6) && (tally_cc == true)) || ((tslddassi == 6) && (tally_dd == true)) || ((tsleeassi == 6) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 54) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=xx green=");
+                if ((tslbbassi == 6) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 6) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 6) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 6) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x02;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally xx red
+            if ((((tslbbassi == 6) && (tally_bb == true)) || ((tslccassi == 6) && (tally_cc == true)) || ((tslddassi == 6) && (tally_dd == true)) || ((tsleeassi == 6) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 54) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=xx red=");
+                if ((tslbbassi == 6) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 6) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 6) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 6) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally xx red wip
+            if ((((tslbbassi == 6) && (tally_bb == true)) || ((tslccassi == 6) && (tally_cc == true)) || ((tslddassi == 6) && (tally_dd == true)) || ((tsleeassi == 6) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 54) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=xx red wip=");
+                if ((tslbbassi == 6) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 6) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 6) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 6) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally yy off
+            if ((((tslbbassi == 7) && (tally_bb == true)) || ((tslccassi == 7) && (tally_cc == true)) || ((tslddassi == 7) && (tally_dd == true)) || ((tsleeassi == 7) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 229) && (udp_seq[1] == 48) && (udp_seq[2] == 77) && (udp_seq[3] == 49)  && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=yy off=");
+                if ((tslbbassi == 7) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 7) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 7) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 7) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally yy green
+            if ((((tslbbassi == 7) && (tally_bb == true)) || ((tslccassi == 7) && (tally_cc == true)) || ((tslddassi == 7) && (tally_dd == true)) || ((tsleeassi == 7) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 77) && (udp_seq[3] == 49) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=yy green=");
+                if ((tslbbassi == 7) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 7) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 7) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 7) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x02;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally yy red
+            if ((((tslbbassi == 7) && (tally_bb == true)) || ((tslccassi == 7) && (tally_cc == true)) || ((tslddassi == 7) && (tally_dd == true)) || ((tsleeassi == 7) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 77) && (udp_seq[3] == 49) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=yy red=");
+                if ((tslbbassi == 7) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 7) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 7) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 7) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally yy red wip
+            if ((((tslbbassi == 7) && (tally_bb == true)) || ((tslccassi == 7) && (tally_cc == true)) || ((tslddassi == 7) && (tally_dd == true)) || ((tsleeassi == 7) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 77) && (udp_seq[3] == 49) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=yy red wip=");
+                if ((tslbbassi == 7) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 7) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 7) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 7) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally zz off
+            if ((((tslbbassi == 8) && (tally_bb == true)) || ((tslccassi == 8) && (tally_cc == true)) || ((tslddassi == 8) && (tally_dd == true)) || ((tsleeassi == 8) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 230) && (udp_seq[1] == 48) && (udp_seq[2] == 77) && (udp_seq[3] == 50) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=zz off=");
+                if ((tslbbassi == 8) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 8) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 8) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 8) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x00;
+                receiverColor = 0x00;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally zz green
+            if ((((tslbbassi == 8) && (tally_bb == true)) || ((tslccassi == 8) && (tally_cc == true)) || ((tslddassi == 8) && (tally_dd == true)) || ((tsleeassi == 8) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 49) && (udp_seq[2] == 77) && (udp_seq[3] == 50) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=zz green=");
+                if ((tslbbassi == 8) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 8) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 8) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 8) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x02;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally zz red
+            if ((((tslbbassi == 8) && (tally_bb == true)) || ((tslccassi == 8) && (tally_cc == true)) || ((tslddassi == 8) && (tally_dd == true)) || ((tsleeassi == 8) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 165) && (udp_seq[1] == 50) && (udp_seq[2] == 77) && (udp_seq[3] == 50) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=zz red=");
+                if ((tslbbassi == 8) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 8) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 8) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 8) && (tally_ee == true)){destination = 0xee;}
+                receiverMode = 0x03;
+                receiverState = 0x01;
+                receiverColor = 0x01;
+                sendMessage();
+                mode = "acknowledge";
+                mode_s = "ack";
+                lastAckTime = millis();
+                lastSwitchTime = millis();
+                clearValues();
+            }
+
+            //tally zz red wip
+            if ((((tslbbassi == 8) && (tally_bb == true)) || ((tslccassi == 8) && (tally_cc == true)) || ((tslddassi == 8) && (tally_dd == true)) || ((tsleeassi == 8) && (tally_ee == true))) && (sendSequence == true) && (blockTsl == false) && (udp_seq[0] == 166) && (udp_seq[1] == 51) && (udp_seq[2] == 77) && (udp_seq[3] == 50) && (millis() - lastSwitchTime > 25)) {
+                Serial.println("=zz red wip=");
+                if ((tslbbassi == 8) && (tally_bb == true)){destination = 0xbb;}
+                if ((tslccassi == 8) && (tally_cc == true)){destination = 0xcc;}
+                if ((tslddassi == 8) && (tally_dd == true)){destination = 0xdd;}
+                if ((tsleeassi == 8) && (tally_ee == true)){destination = 0xee;}
                 receiverMode = 0x03;
                 receiverState = 0x01;
                 receiverColor = 0x01;

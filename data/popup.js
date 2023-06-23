@@ -19,6 +19,20 @@ function checkerRestartRequired() {
     }
 }
 
+function checkerID() {
+  var result = confirm('Please make sure, that every Tally have a different ID from 1 to 8! Are you sure?');
+    if (result == false) {
+      event.preventDefault();
+    }
+}
+
+function checkerSave() {
+  var result = confirm('All values will be saved for the next start. Are you sure?');
+    if (result == false) {
+      event.preventDefault();
+    }
+}
+
 function getURLParameter(sParam) {
   var sPageURL = window.location.search.substring(1);
   var sURLVariables = sPageURL.split('&');
