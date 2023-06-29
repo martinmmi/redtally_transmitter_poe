@@ -249,7 +249,7 @@ bool initBattery = true;
 bool batteryAttention = false;
 bool batteryAttentionState = false;
 bool ethConnected = false;
-bool useSTATIC = true;
+bool useSTATIC = false;
 bool useWLAN = false;
 bool useTSL = true;
 bool bool_esm = false;
@@ -1244,7 +1244,7 @@ void setup() {
 
     eeprom.begin("network", false);                //false mean use read/write mode
 
-    useSTATIC = eeprom.getBool("dhcp", true);     //false mean default value if nothing returned
+    useSTATIC = eeprom.getBool("dhcp", false);     //false mean default value if nothing returned
     Serial.print("useSTATIC: "); Serial.println(useSTATIC);
 
     udpPort = eeprom.getInt("udpport", udpPort);     
