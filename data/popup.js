@@ -26,12 +26,14 @@ function checkerID() {
     }
 }
 
+/*
 function checkerSave() {
   var result = confirm('All values will be saved for the next start. Are you sure?');
     if (result == false) {
       event.preventDefault();
     }
 }
+*/
 
 function getURLParameter(sParam) {
   var sPageURL = window.location.search.substring(1);

@@ -1223,6 +1223,8 @@ void setup() {
     Serial.print("CPU1 reset reason: ");
     Serial.println(rtc_get_reset_reason(1));
 
+    /*
+
     if (rtc_get_reset_reason(0) == 1 && rtc_get_reset_reason(1) == 14 && shutdown == false) {
             eeprom.begin("network", false);
             eeprom.clear();             //Clear the eeprom when the reset button is pushed
@@ -1239,6 +1241,8 @@ void setup() {
         Serial.print("shutdown: "); Serial.println(shutdown); 
         eeprom.end();
     }
+
+    */
 
 //////////////////////////////////////////////////////////////////////
 
@@ -1731,6 +1735,7 @@ void setup() {
         }
     });
 
+    /*
     server.on("/savedata", HTTP_GET, [](AsyncWebServerRequest *request){
         if (authenticated == true) {
 
@@ -1745,6 +1750,7 @@ void setup() {
             request->send(SPIFFS, "/login.html", String(), false, proc_state);
         }
     });
+    */
 
     server.on("/restart", HTTP_GET, [](AsyncWebServerRequest *request){
         if (authenticated == true) {
