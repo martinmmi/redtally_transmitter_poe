@@ -45,6 +45,7 @@ h3 {
   color: #ffffff;
   padding: 2vh;
   font-size: 12px;
+  margin-bottom: -2.5em;
 }
 
 /* NAVIGATION */
@@ -142,6 +143,23 @@ h3 {
   border-spacing: 12px 6px;
   font-size: 1.2rem;
 }
+
+.content select,.select-selected {
+  display: inline-block;
+  background-color: #7e7e7e;
+  border: none;
+  border-radius: 4px;
+  font-family: Helvetica;
+  color: white;
+  padding: 4px 8px;
+  text-decoration: none;
+  font-size: 18px;
+  width: 180px;
+  margin: 6px;
+  box-sizing: border-box; 
+}
+
+
 
 #popup {
   padding: 15px;
@@ -269,6 +287,21 @@ h3 {
   background-color: #575757;
 }
 
+.tcp {
+  background-color: #1f7242;
+}
+
+.tcp:hover {
+  background-color: #28854e;
+}
+
+.udp {
+  background-color: #353535;
+}
+
+.udp:hover {
+  background-color: #575757;
+}
 
 .save {
   background-color: #b76241;
@@ -279,19 +312,19 @@ h3 {
 }
 
 .restart {
-  background-color: #221246;
+  background-color: #353535;
 }
 
 .restart:hover {
-  background-color: #2a1757;
+  background-color: #575757;
 }
 
 .reset {
-  background-color: #a8124c;
+  background-color: #353535;
 }
 
 .reset:hover {
-  background-color: #c2225f;
+  background-color: #575757;
 }
 
 .submit {

@@ -34,6 +34,10 @@ int udpPort = 5727;
 int udpPortState;
 int udpPortNew;
 
+WiFiClient tcp;
+int tcpPort = 5828;
+const char *tcpServer = "192.168.178.99";
+
 String mode = "discover";
 String mode_s = "dis";
 String name_html = "REDTALLY";              // Device Name
@@ -52,6 +56,7 @@ String gwOctet1, gwOctet2, gwOctet3, gwOctet4;
 String snOctet1, snOctet2, snOctet3, snOctet4;
 String dns1Octet1, dns1Octet2, dns1Octet3, dns1Octet4;
 String dns2Octet1, dns2Octet2, dns2Octet3, dns2Octet4;
+String tslDevice = "carbonite";
 String ssid = "mySSID";
 String wifipassword = "myPASSWORD";
 String www_username = "admin";
@@ -147,6 +152,7 @@ const char* param_bbassi = "inputtslbbassi";
 const char* param_ccassi = "inputtslccassi";
 const char* param_ddassi = "inputtslddassi";
 const char* param_eeassi = "inputtsleeassi";
+const char* param_tsldevice = "device";
 
 ///////////////////////////////////////////////
 ///////// Setup Transmitter Values ////////////
@@ -214,6 +220,7 @@ int tslccassi = 2;
 int tslddassi = 3;
 int tsleeassi = 4;
 int tslbbassiNew, tslccassiNew, tslddassiNew, tsleeassiNew;
+int tcpCount = 0;
 
 ///////////////////////////////////////////////
 //////////// Setup LORA Values ////////////////
@@ -221,8 +228,8 @@ int tslbbassiNew, tslccassiNew, tslddassiNew, tsleeassiNew;
 
 int loraTxPower = 17;                   //2-20 default if eeprom is empty 17
 int loraTxPowerNew;
-int loraSpreadingFactor = 7;            //6-12 default  7
-double loraSignalBandwidth = 125E3;     //7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, 250E3, and 500E3 default 125E3
+int loraSpreadingFactor = 8;            //6-12 default  7
+double loraSignalBandwidth = 250E3;     //7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, 250E3, and 500E3 default 125E3
 int loraCodingRate = 5;                 //5-8 default 5
 int loraPreambleLength = 8;             //6-65535 default 8
 double loraFrequenz = 868E6;            //set Frequenz 915E6 or 868E6
@@ -252,6 +259,7 @@ bool ethConnected = false;
 bool useSTATIC = true;
 bool useWLAN = false;
 bool useTSL = true;
+bool useUDP = true;
 bool bool_esm = false;
 bool ethState = false;
 bool loraInit = false;
@@ -263,10 +271,10 @@ bool notempty = false;
 bool errortxp = false;
 bool errorport = false;
 bool errorDiscoverTime = false;
-bool errorTslBBAssi= false;
-bool errorTslCCAssi= false;
-bool errorTslDDAssi= false;
-bool errorTslEEAssi= false;
+bool errorTslBBAssi = false;
+bool errorTslCCAssi = false;
+bool errorTslDDAssi = false;
+bool errorTslEEAssi = false;
 bool first_udp_seq = true;
 bool tslAckReceived = true;
 bool initUdpSteam = false;
@@ -497,6 +505,22 @@ String proc_state(const String& state){
             html_state_tsl = "GPIO";
         }
         return html_state_tsl;
+    }
+
+    if(state == "STATE_TSL_TRANSPORT"){
+        if(useUDP == true){
+            return "UDP";
+        }
+        else{
+            return "TCP";
+        }
+    }
+
+    if(state == "STATE_TSL_DEVICE"){
+        eeprom.begin("configuration", false); 
+        tslDevice = eeprom.getString("tsldevice", tslDevice); 
+        eeprom.end();
+        return tslDevice;
     }
 
     if(state == "STATE_UDP_PORT"){  
@@ -1004,12 +1028,36 @@ void WiFiEvent(WiFiEvent_t event) {
         Serial.println("Mbps.");
         ethConnected = true;
 
-        //initializes the UDP state
-        //This initializes the transfer buffer
-        Serial.print("Start UDP receiver to ");
-        Serial.print(udpPort);
-        Serial.println(" Port");
-        udp.begin(WiFi.localIP(), udpPort);
+        if (useUDP == true){            //initializes the UDP state         //This initializes the transfer buffer
+            Serial.print("Start UDP receiver to ");
+            Serial.print(udpPort);
+            Serial.println(" Port");
+            udp.begin(WiFi.localIP(), udpPort);
+        }
+
+        /*
+        if (useUDP == false){
+            Serial.print("Try to connect to TCP server ");
+            Serial.print(tcpServer);
+            Serial.print(" with port ");
+            Serial.print(tcpPort);
+
+            while (!tcp.connect(tcpServer, tcpPort)) {
+                Serial.print("."); delay(500);
+                tcpCount++; 
+
+                if (tcpCount == 8){
+                    tcpCount = 0;
+                    break;
+                    Serial.println("Server not founded!");
+                }
+            }
+            if ((tcp.connect(tcpServer, tcpPort) || (tcpCount != 0))){
+                    tcpCount = 0;
+                    Serial.println("Server connected!");
+            }
+        }
+        */
 
         break;
     case ARDUINO_EVENT_ETH_DISCONNECTED:
@@ -1211,11 +1259,13 @@ void setup() {
     //When upload some programs, esp clear the flash with the reason 1 and 14
     //When restart, only reason 12 is excecuted
 
+    /*
     eeprom.begin("configuration", false);                //false mean use read/write mode
 
     shutdown = eeprom.getBool("shut", false);    
     Serial.print("shutdown: "); Serial.println(shutdown); 
     eeprom.end();
+    */
 
     Serial.print("CPU0 reset reason: ");
     Serial.println(rtc_get_reset_reason(0));
@@ -1295,6 +1345,9 @@ void setup() {
     useTSL = eeprom.getBool("tsl", true);                         //change default tsl
     Serial.print("useTSL: "); Serial.println(useTSL);
 
+    tslDevice = eeprom.getString("tsldevice", tslDevice); 
+    Serial.print("tslDevice: "); Serial.println(tslDevice);
+
     tslbbassi = eeprom.getInt("tslbbid", tslbbassi);
     Serial.print("tslbbassi: "); Serial.println(tslbbassi);
 
@@ -1309,6 +1362,9 @@ void setup() {
 
     discoverTime = eeprom.getInt("distime", discoverTime);   
     Serial.print("discoverTime: "); Serial.println(discoverTime);
+
+    useUDP = eeprom.getBool("udp", true);                         //change default udp
+    Serial.print("useUDP: "); Serial.println(useUDP);
 
     bool_esm = eeprom.getBool("esm", false);
     Serial.print("bool_esm: "); Serial.println(bool_esm);
@@ -1459,8 +1515,6 @@ void setup() {
 
 //////////////////////////////////////////////////////////////////////
 
-    WiFi.onEvent(WiFiEvent);
-
     pinMode(NRST, OUTPUT);
 
     digitalWrite(NRST, 0);
@@ -1483,6 +1537,8 @@ void setup() {
         ETH.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS);
         WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS);
     }
+
+    WiFi.onEvent(WiFiEvent);
     
 //////////////////////////////////////////////////////////////////////
 
@@ -1679,6 +1735,14 @@ void setup() {
         }
     });
 
+    server.on("/configuration-tsl", HTTP_GET, [](AsyncWebServerRequest *request){
+        if (authenticated == true) {
+            request->send(SPIFFS, "/configuration-tsl.html", String(), false, proc_state);
+        } else {
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
+        }
+    });
+
     server.on("/tsl", HTTP_GET, [](AsyncWebServerRequest *request){
         if (authenticated == true) {
             useTSL = true;
@@ -1700,6 +1764,32 @@ void setup() {
             Serial.print("useTSL: "); Serial.println(useTSL);    
             eeprom.end();
             request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+        } else {
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
+        }
+    });
+
+    server.on("/udp", HTTP_GET, [](AsyncWebServerRequest *request){
+        if (authenticated == true) {
+            useUDP = true;
+            eeprom.begin("configuration", false);                //false mean use read/write mode
+            eeprom.putBool("udp", useUDP);     
+            Serial.print("useUDP: "); Serial.println(useUDP);
+            eeprom.end();
+            request->send(SPIFFS, "/configuration-tsl.html", String(), false, proc_state);
+        } else {
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
+        }
+    });
+
+    server.on("/tcp", HTTP_GET, [](AsyncWebServerRequest *request){
+        if (authenticated == true) {
+            useUDP = false;
+            eeprom.begin("configuration", false);                //false mean use read/write mode
+            eeprom.putBool("udp", useUDP); 
+            Serial.print("useUDP: "); Serial.println(useUDP);    
+            eeprom.end();
+            request->send(SPIFFS, "/configuration-tsl.html", String(), false, proc_state);
         } else {
             request->send(SPIFFS, "/login.html", String(), false, proc_state);
         }
@@ -1928,7 +2018,7 @@ void setup() {
     });
 
     // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
-    server.on("/get-port", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    server.on("/tsl-port", HTTP_GET, [] (AsyncWebServerRequest *request) {
         if (authenticated == true) {
             String input_port;
             String input_param_port;
@@ -1967,9 +2057,9 @@ void setup() {
 
                         Serial.print("New UDP-Port: "); Serial.println(udpPortNew);
 
-                        request->send(SPIFFS, "/network.html", String(), false, proc_state);
+                        request->send(SPIFFS, "/configuration-tsl.html", String(), false, proc_state);
                     } else{
-                        request->send(SPIFFS, "/network.html", String(), false, proc_state);
+                        request->send(SPIFFS, "/configuration-tsl.html", String(), false, proc_state);
                     }
 
                 }
@@ -2035,6 +2125,37 @@ void setup() {
             if(input_discoverTime == "" || errorDiscoverTime == true) {
                 request->send(SPIFFS, "/formaterror.html", String(), false, proc_state);
             }
+
+        } else {
+            request->send(SPIFFS, "/login.html", String(), false, proc_state);
+        }
+    });
+
+
+    // Send a GET request to <ESP_IP>/get?input1=<inputMessage>
+    server.on("/tsl-device", HTTP_GET, [] (AsyncWebServerRequest *request) {
+        if (authenticated == true) {
+            String input_tsldevice;
+            String input_param_tsldevice;
+
+            if (request->hasParam(param_tsldevice)) {
+            input_tsldevice = request->getParam(param_tsldevice)->value();
+            input_param_tsldevice = param_tsldevice;
+            }
+            // If empty, print no message
+            if (request->hasParam("")) {
+            input_tsldevice = "No message sent";
+            input_param_tsldevice = "none";
+            }
+
+            tslDevice = input_tsldevice;
+
+            eeprom.begin("configuration", false);                //false mean use read/write mode
+            eeprom.putString("tsldevice", tslDevice);    
+            Serial.print("tsldevice: "); Serial.println(tslDevice);
+            eeprom.end(); 
+
+            request->send(SPIFFS, "/configuration-tsl.html", String(), false, proc_state);
 
         } else {
             request->send(SPIFFS, "/login.html", String(), false, proc_state);
@@ -2192,7 +2313,7 @@ void setup() {
             if(input_tslbbassi == "" || input_tslccassi == "" || input_tslddassi == "" || input_tsleeassi == "" || errorTslBBAssi == true || errorTslCCAssi == true || errorTslDDAssi == true || errorTslEEAssi == true) {
                 request->send(SPIFFS, "/formaterror.html", String(), false, proc_state);
             } else {
-                request->send(SPIFFS, "/configuration.html", String(), false, proc_state);
+                request->send(SPIFFS, "/configuration-tsl.html", String(), false, proc_state);
             }
 
         } else {
@@ -2732,9 +2853,50 @@ void loop() {
     }
 
 
+    // Request Mode TSL TCP CARBONITE
+    if ((mode == "request") && (millis() - lastTslReadTime > 50) && (useTSL == true) && (useUDP == false) && (tslDevice == "carbonite")) {
 
-    // Request Mode TSL
-    if ((mode == "request") && (millis() - lastTslReadTime > 50) && (useTSL == true)) {
+        if (ethConnected) {
+
+            /*
+            if (!tcp.connected()) {
+
+                Serial.print("Try to connect to TCP server ");
+                Serial.print(tcpServer);
+                Serial.print(" with port ");
+                Serial.print(tcpPort);
+
+                while (!tcp.connect(tcpServer, tcpPort)) {
+                    Serial.print("."); delay(500);
+                    tcpCount++; 
+
+                    if (tcpCount == 8){
+                        tcpCount = 0;
+                        break;
+                        Serial.println("Server not founded!");
+                    }
+                }
+                if ((tcp.connect(tcpServer, tcpPort) || (tcpCount != 0))){
+                        tcpCount = 0;
+                        Serial.println("Server connected!");
+                }
+            
+            }
+            */
+
+            // Listen for returned messages
+            while (tcp.available()) {
+                Serial.write(tcp.read());
+            }
+
+        }
+
+        lastTslReadTime = millis();
+    }
+
+
+    // Request Mode TSL UDP CARBONITE
+    if ((mode == "request") && (millis() - lastTslReadTime > 50) && (useTSL == true) && (useUDP == true) && (tslDevice == "carbonite")) {
 
         if (ethConnected) {
             

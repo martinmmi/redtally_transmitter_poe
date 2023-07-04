@@ -46,31 +46,8 @@
             </table>
           </div>
           <h3>*Only TSL v3.1 via UDP is available for Ross Carbonite Devices.</h3>
-
-          
-          <div class="content">
-            <p>TSL-ID-ASSIGNMENT:</p>
-            <form action="/tsl-assignment">
-              <table>
-                <tr>
-                  <td align=right>TALLY BB ID:</td>
-                  <td align=left><input class="field" type="text" name="inputtslbbassi" placeholder="%STATE_ASSI_BB%"></td>
-                </tr>
-                <tr>
-                  <td align=right>TALLY CC ID:</td>
-                  <td align=left><input class="field" type="text" name="inputtslccassi" placeholder="%STATE_ASSI_CC%"></td>
-                </tr>
-                <tr>
-                  <td align=right>TALLY DD ID:</td>
-                  <td align=left><input class="field" type="text" name="inputtslddassi" placeholder="%STATE_ASSI_DD%"></td>
-                </tr>
-                <tr>
-                  <td align=right>TALLY EE ID:</td>
-                  <td align=left><input class="field" type="text" name="inputtsleeassi" placeholder="%STATE_ASSI_EE%"></td>
-                </tr>
-              </table>
-              <button class="button submit" type="submit" onclick="checkerID()" class="btn btn default">Submit</button>
-            </form>
+          <div class="return">
+            <a href="/configuration-tsl"><button class="button submit">More TSL-Configurations</button></a>
           </div>
 
 
@@ -154,22 +131,24 @@
             </form>
           </div>
 
-          <!--
-          <div class="content">
-            <p>SAVE DATA:</p>
-            <a href="/savedata"><button class="button save" onclick="checkerSave()" class="btn btn default">SAVE</button></a>
-          </div>
-          -->
-          
-          <div class="content">
-            <p>RESTART:</p>
-            <a href="/restart"><button class="button restart" onclick="checkerRestart()" class="btn btn default">RESTART</button></a>
-          </div>
-
 
           <div class="content">
-            <p>FACTORY RESET:</p>
-            <a href="/factoryreset"><button class="button reset" onclick="checkerRestart()" class="btn btn default">FACTORY RESET</button></a>
+            <p>COMMANDS:</p>
+            <table>
+              <tr>
+                <!--
+                <td>
+                  <a href="/savedata"><button class="button save" onclick="checkerSave()" class="btn btn default">SAVEDATA</button></a>
+                </td>
+                -->
+                <td>
+                  <a href="/restart"><button class="button restart" onclick="checkerRestart()" class="btn btn default">RESTART</button></a>
+                </td>
+                <td> 
+                  <a href="/factoryreset"><button class="button reset" onclick="checkerRestart()" class="btn btn default">DEFAULTS</button></a>
+                </td>
+              </tr>
+            </table>
           </div>
 
 

@@ -13,7 +13,7 @@
 
   <body>
 
-          
+
         <div class="box">
           <div id="navigation">
             <div class="wrapper">
@@ -32,88 +32,87 @@
 
           <div class="content">
             <div class="firstcontent">
-              <p>WLAN: <strong>%STATE_WLAN%</strong></p>
+              <p>TSL-DEVICE:</p>
             </div>
-            <table>
-              <tr>
-                <td>
-                  <a href="/wlan-on"><button class="button on" onclick="checker()" class="btn btn default">ON</button></a>
-                </td>
-                <td> 
-                  <a href="/wlan-off"><button class="button off">OFF</button></a>
-                </td>
-              </tr>
-            </table>
-          </div>
-
-
-          <div class="content">
-            <p>WLAN CREDENTIALS:</p>
-            <form action="/wlan-change">
+            <form action="/tsl-device">
               <table>
                 <tr>
-                  <td align=right>SSID:</td>
-                  <td align=left><input class="field" type="text" name="inputSSID" placeholder="%STATE_SSID%"></td>
-                </tr>
-                <tr>
-                  <td align=right>PASSWORD:</td>
-                  <td align=left><input class="field" type="text" name="inputWLANPASSWORD" placeholder="%STATE_WLANPASSWORD%"></td>
+                  <td align=right>SELECTED:</td>
+                  <td align=left>
+                    <select name="device" id="device">
+                      <option value="" disabled selected hidden>%STATE_TSL_DEVICE%</option>
+                      <option value="carbonite">carbonite</option>
+                      <option value="acuity">acuity</option>
+                      <option value="vmix">vmix</option>
+                      <option value="tricaster">tricaster</option>
+                    </select>
+                  </td>
                 </tr>
               </table>
               <button class="button submit" type="submit" onclick="checker()" class="btn btn default">Submit</button>
             </form>
           </div>
 
-            
+
           <div class="content">
-            <p>DHCP: <strong>%STATE_DHCP%</strong></p>
+            <p>TSL-TRANSPORT: <strong>%STATE_TSL_TRANSPORT%</strong></p>
             <table>
               <tr>
                 <td>
-                  <a href="/dhcp-on"><button class="button on" onclick="checkerRestart()" class="content popup active">ON</button></a>
+                  <a href="/tcp"><button class="button tcp">TCP</button></a>
                 </td>
                 <td> 
-                  <a href="/dhcp-off"><button class="button off" onclick="checkerRestart()" class="btn btn default">OFF</button></a>
+                  <a href="/udp"><button class="button udp">UDP</button></a>
                 </td>
               </tr>
             </table>
           </div>
+          
+
+          <div class="content">
+            <p>TSL-ASSIGNMENT:</p>
+            <form action="/tsl-assignment">
+              <table>
+                <tr>
+                  <td align=right>TALLY BB ID:</td>
+                  <td align=left><input class="field" type="text" name="inputtslbbassi" placeholder="%STATE_ASSI_BB%"></td>
+                </tr>
+                <tr>
+                  <td align=right>TALLY CC ID:</td>
+                  <td align=left><input class="field" type="text" name="inputtslccassi" placeholder="%STATE_ASSI_CC%"></td>
+                </tr>
+                <tr>
+                  <td align=right>TALLY DD ID:</td>
+                  <td align=left><input class="field" type="text" name="inputtslddassi" placeholder="%STATE_ASSI_DD%"></td>
+                </tr>
+                <tr>
+                  <td align=right>TALLY EE ID:</td>
+                  <td align=left><input class="field" type="text" name="inputtsleeassi" placeholder="%STATE_ASSI_EE%"></td>
+                </tr>
+              </table>
+              <button class="button submit" type="submit" onclick="checkerID()" class="btn btn default">Submit</button>
+            </form>
+          </div>
 
 
           <div class="content">
-            <p>Static IP-Configuration:</p>
-            <form action="/get-ip">
+            <p>TSL-PORT:</p>
+            <form action="/tsl-port">
               <table>
                 <tr>
-                  <td align=right>IPv4:</td>
-                  <td align=left><input class="field" type="text" name="input1" placeholder="%STATE_IP%"></td>
-                </tr>
-                <tr>
-                  <td align=right>Gateway:</td>
-                  <td align=left><input class="field" type="text" name="input2" placeholder="%STATE_GW%"></td>
-                </tr>
-                <tr>
-                  <td align=right>Subnetmask:</td>
-                  <td align=left><input class="field" type="text" name="input3" placeholder="%STATE_SNM%"></td>
-                </tr>
-                <tr>
-                  <td align=right>DNS1:</td>
-                  <td align=left><input class="field" type="text" name="input4" placeholder="%STATE_DNS1%"></td>
-                </tr>
-                <tr>
-                  <td align=right>DNS2:</td>
-                  <td align=left><input class="field" type="text" name="input5" placeholder="%STATE_DNS2%"></td>
+                  <td align=right>TSL-PORT:</td>
+                  <td align=left><input class="field" type="text" name="inputUdpPort" placeholder="%STATE_UDP_PORT%"></td>
                 </tr>
               </table>
-              <button class="button submit" type="submit" onclick="checkerRestart()" class="btn btn default">Submit</button>
+              <button class="button submit" type="submit" onclick="checkerRestartRequired()" class="btn btn default">Submit</button>
             </form>
           </div>
-        
-          
+
+
           <div class="return">
-            <a href="/"><button class="button submit">Return</button></a>
+            <a href="/configuration"><button class="button submit">Return</button></a>
           </div>
-        </div>
+        </div> 
     
   </body>
 </html>
