@@ -42,7 +42,7 @@ String mode = "discover";
 String mode_s = "dis";
 String name_html = "REDTALLY";              // Device Name
 String name = "REDTALLY Transmitter";       // Device Name
-String version = "T0.03";                   // Frimeware Version
+String version = "T0.04";                   // Frimeware Version
 String rx_adr, tx_adr, rssi, bL;
 String tx_adr_bb, tx_adr_cc, tx_adr_dd, tx_adr_ee;
 String rssi_bb, rssi_cc, rssi_dd, rssi_ee;
