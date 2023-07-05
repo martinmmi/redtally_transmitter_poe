@@ -34,9 +34,14 @@ int udpPort = 5727;
 int udpPortState;
 int udpPortNew;
 
-WiFiClient tcp;
-int tcpPort = 5828;
-const char *tcpServer = "192.168.178.99";
+//incoming
+int tcpPortIncoming = 5829;
+WiFiServer tcpServer(tcpPortIncoming);
+
+//outgoing
+int tcpPortOutgoing = 5828;
+const char *tcpIpOutgoing = "192.168.178.99";
+WiFiClient tcpClient;
 
 String mode = "discover";
 String mode_s = "dis";
@@ -1035,29 +1040,25 @@ void WiFiEvent(WiFiEvent_t event) {
             udp.begin(WiFi.localIP(), udpPort);
         }
 
-        /*
+        
         if (useUDP == false){
-            Serial.print("Try to connect to TCP server ");
-            Serial.print(tcpServer);
-            Serial.print(" with port ");
-            Serial.print(tcpPort);
 
-            while (!tcp.connect(tcpServer, tcpPort)) {
-                Serial.print("."); delay(500);
-                tcpCount++; 
+            if (!tcpClient.connected()) {
 
-                if (tcpCount == 8){
-                    tcpCount = 0;
-                    break;
-                    Serial.println("Server not founded!");
+                Serial.print("Try to connect to TCP server ");
+                Serial.print(tcpIpOutgoing);
+                Serial.print(" with port ");
+                Serial.println(tcpPortOutgoing);
+
+                while (!tcpClient.connect(tcpIpOutgoing, tcpPortOutgoing)) {
+                    Serial.print("."); delay(500);
                 }
+                Serial.println("Server connected!");
+
             }
-            if ((tcp.connect(tcpServer, tcpPort) || (tcpCount != 0))){
-                    tcpCount = 0;
-                    Serial.println("Server connected!");
-            }
+            
         }
-        */
+        
 
         break;
     case ARDUINO_EVENT_ETH_DISCONNECTED:
@@ -2610,6 +2611,8 @@ void setup() {
 
     startSPI_LORA();
 
+    tcpServer.begin();
+
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -2858,35 +2861,34 @@ void loop() {
 
         if (ethConnected) {
 
-            /*
-            if (!tcp.connected()) {
+            
+            if (!tcpClient.connected()) {
 
                 Serial.print("Try to connect to TCP server ");
-                Serial.print(tcpServer);
+                Serial.print(tcpIpOutgoing);
                 Serial.print(" with port ");
-                Serial.print(tcpPort);
+                Serial.println(tcpPortOutgoing);
 
-                while (!tcp.connect(tcpServer, tcpPort)) {
+                while (!tcpClient.connect(tcpIpOutgoing, tcpPortOutgoing)) {
                     Serial.print("."); delay(500);
-                    tcpCount++; 
-
-                    if (tcpCount == 8){
-                        tcpCount = 0;
-                        break;
-                        Serial.println("Server not founded!");
+                }
+                Serial.println("TCP server connected!");
+            }
+            
+            WiFiClient tcpClient = tcpServer.available();         // listen for incoming clients
+            if (tcpClient) {                                   // if you get a client,
+                Serial.println("New TCP client.");              // print a message out the serial port
+                String currentLine = "";                    // make a String to hold incoming data from the client
+                while (tcpClient.connected()) {                // loop while the client's connected
+                    if (tcpClient.available()) {               // if there's bytes to read from the client,
+                        char c = tcpClient.read();             // read a byte, then
+                        Serial.write(c);                    // print it out the serial monitor
                     }
                 }
-                if ((tcp.connect(tcpServer, tcpPort) || (tcpCount != 0))){
-                        tcpCount = 0;
-                        Serial.println("Server connected!");
-                }
-            
-            }
-            */
-
-            // Listen for returned messages
-            while (tcp.available()) {
-                Serial.write(tcp.read());
+                // close the connection:
+                tcpClient.stop();
+                Serial.println(" ");
+                Serial.println("TCP client disconnected.");
             }
 
         }
