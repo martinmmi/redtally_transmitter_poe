@@ -2855,6 +2855,14 @@ void loop() {
         lastAnalogReadTime = millis();
     }
 
+    // Request Mode vMIX
+    if ((mode == "request") && (millis() - lastTslReadTime > 50) && (tslDevice == "vmix")) {
+
+
+
+
+        lastTslReadTime = millis();
+    }
 
     // Request Mode TSL TCP CARBONITE
     if ((mode == "request") && (millis() - lastTslReadTime > 50) && (useTSL == true) && (useUDP == false) && (tslDevice == "carbonite")) {
